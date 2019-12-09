@@ -1,4 +1,5 @@
-package serve
+// Package ember provides tools to serve Ember.js apps from Go HTTP handlers.
+package ember
 
 import (
 	"bytes"
