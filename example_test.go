@@ -32,16 +32,10 @@ var files = map[string]string{
 
 func Example() {
 	// create app
-	app, err := Create("app", files)
-	if err != nil {
-		panic(err)
-	}
+	app := MustCreate("app", files)
 
 	// set static config
-	err = app.Set("apiBaseURI", "http://api.example.com")
-	if err != nil {
-		panic(err)
-	}
+	app.MustSet("apiBaseURI", "http://api.example.com")
 
 	// run listener
 	go func() {
@@ -50,10 +44,7 @@ func Example() {
 			app := app.Clone()
 
 			// set dynamic config
-			err = app.Set("path", r.URL.Path)
-			if err != nil {
-				panic(err)
-			}
+			app.MustSet("path", r.URL.Path)
 
 			// serve app
 			app.ServeHTTP(w, r)

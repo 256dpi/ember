@@ -27,6 +27,17 @@ type App struct {
 	config Config
 }
 
+// MustCreate will call Create and panic on errors.
+func MustCreate(name string, build map[string]string) *App {
+	// create app
+	app, err := Create(name, build)
+	if err != nil {
+		panic(err)
+	}
+
+	return app
+}
+
 // Create will create and Ember.js application instance from the provided build.
 func Create(name string, build map[string]string) (*App, error) {
 	// convert files
@@ -81,8 +92,17 @@ func Create(name string, build map[string]string) (*App, error) {
 	}, nil
 }
 
+// MustSet will call Set and panic on errors.
+func (a *App) MustSet(name string, value interface{}) {
+	// set value
+	err := a.Set(name, value)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Set will set the provided settings on the application.
-func (a *App) Set(name string, value string) error {
+func (a *App) Set(name string, value interface{}) error {
 	// set config
 	a.config[name] = value
 
