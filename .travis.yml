@@ -9,5 +9,4 @@ before_install:
 install:
   - go get -t ./...
 script:
-  - make setup
   - $HOME/gopath/bin/goveralls -service=travis-ci
