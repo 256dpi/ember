@@ -1,6 +1,8 @@
 package ember
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,4 +37,32 @@ func TestApp(t *testing.T) {
 			</body>
 		</html>
 	`), clean(string(index)))
+}
+
+func BenchmarkApp(b *testing.B) {
+	app, err := Create("app", files)
+	if err != nil {
+		panic(err)
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		app := app.Clone()
+
+		err = app.Set("path", r.URL.Path)
+		if err != nil {
+			panic(err)
+		}
+
+		app.ServeHTTP(w, r)
+	})
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/hello", nil)
+
+		handler(rec, req)
+	}
 }
