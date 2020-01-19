@@ -12,22 +12,18 @@ import (
 	"strings"
 )
 
-// Config represents an Ember.js app configuration.
-type Config = map[string]interface{}
-
 // App is an in-memory representation of an Ember.js application.
 type App struct {
-	name   string
 	files  map[string][]byte
 	before []byte
 	after  []byte
-	config Config
+	config map[string]interface{}
 }
 
 // MustCreate will call Create and panic on errors.
-func MustCreate(name string, build map[string]string) *App {
+func MustCreate(name string, files map[string]string) *App {
 	// create app
-	app, err := Create(name, build)
+	app, err := Create(name, files)
 	if err != nil {
 		panic(err)
 	}
@@ -35,55 +31,55 @@ func MustCreate(name string, build map[string]string) *App {
 	return app
 }
 
-// Create will create and Ember.js application instance from the provided build.
-func Create(name string, build map[string]string) (*App, error) {
+// Create will create and Ember.js application instance from the provided files.
+// The provided map must at least include the "index.html" key with the contents
+// of the index html file. All other files e.g. "assets/app.css" are served with
+// their corresponding MIME types read from the file extension.
+func Create(name string, files map[string]string) (*App, error) {
 	// convert files
-	files := make(map[string][]byte)
-	for file, content := range build {
-		files[file] = []byte(content)
+	bytesFiles := make(map[string][]byte)
+	for file, content := range files {
+		bytesFiles[file] = []byte(content)
 	}
 
 	// get index
-	index, ok := files["index.html"]
+	index, ok := bytesFiles["index.html"]
 	if !ok {
 		return nil, fmt.Errorf("missing index.html")
 	}
 
-	// compute tag start and end
-	tagStart := fmt.Sprintf(`<meta name="%s/config/environment" content="`, name)
-	tagEnd := `"/>`
-
 	// find tag start
+	tagStart := fmt.Sprintf(`<meta name="%s/config/environment" content="`, name)
 	start := bytes.Index(index, []byte(tagStart))
 	if start < 0 {
 		return nil, fmt.Errorf("config meta tag start not found")
 	}
 
 	// find tag end
+	tagEnd := `"/>`
 	end := bytes.Index(index[start+len(tagStart):], []byte(tagEnd))
 	if end < 0 {
 		return nil, fmt.Errorf("config meta tag end not found")
 	}
 
-	// get meta
-	meta := index[start+len(tagStart) : start+len(tagStart)+end]
+	// get meta content
+	content := index[start+len(tagStart) : start+len(tagStart)+end]
 
-	// unescape attribute
-	data, err := url.QueryUnescape(string(meta))
+	// unescape content
+	data, err := url.QueryUnescape(string(content))
 	if err != nil {
 		return nil, err
 	}
 
 	// unmarshal configuration
-	var config Config
+	var config map[string]interface{}
 	err = json.Unmarshal([]byte(data), &config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &App{
-		name:   name,
-		files:  files,
+		files:  bytesFiles,
 		before: index[:start+len(tagStart)],
 		after:  index[start+len(tagStart)+end:],
 		config: config,
@@ -135,7 +131,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get path
+	// remove leading slash
 	pth := strings.TrimPrefix(r.URL.Path, "/")
 
 	// get content
@@ -164,13 +160,12 @@ func (a *App) Clone() *App {
 	}
 
 	// clone config
-	config := Config{}
+	config := map[string]interface{}{}
 	for key, value := range a.config {
 		config[key] = value
 	}
 
 	return &App{
-		name:   a.name,
 		files:  files,
 		before: a.before,
 		after:  a.after,
