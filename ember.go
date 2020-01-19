@@ -10,9 +10,6 @@ import (
 	"net/url"
 	"path"
 	"strings"
-
-	"github.com/PuerkitoBio/goquery"
-	"golang.org/x/net/html"
 )
 
 // Config represents an Ember.js app configuration.
@@ -22,8 +19,8 @@ type Config = map[string]interface{}
 type App struct {
 	name   string
 	files  map[string][]byte
-	index  *goquery.Document
-	meta   *goquery.Selection
+	before []byte
+	after  []byte
 	config Config
 }
 
@@ -52,26 +49,27 @@ func Create(name string, build map[string]string) (*App, error) {
 		return nil, fmt.Errorf("missing index.html")
 	}
 
-	// parse document
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(index))
-	if err != nil {
-		return nil, err
+	// compute tag start and end
+	tagStart := fmt.Sprintf(`<meta name="%s/config/environment" content="`, name)
+	tagEnd := `"/>`
+
+	// find tag start
+	start := bytes.Index(index, []byte(tagStart))
+	if start < 0 {
+		return nil, fmt.Errorf("config meta tag start not found")
 	}
 
-	// find tag
-	meta := doc.Find(fmt.Sprintf("meta[name='%s/config/environment']", name))
-	if meta.Length() == 0 {
-		return nil, fmt.Errorf("config meta tag not found")
+	// find tag end
+	end := bytes.Index(index[start+len(tagStart):], []byte(tagEnd))
+	if end < 0 {
+		return nil, fmt.Errorf("config meta tag end not found")
 	}
 
-	// get attribute
-	attr, ok := meta.Attr("content")
-	if !ok {
-		return nil, fmt.Errorf(`missing "content" attribute`)
-	}
+	// get meta
+	meta := index[start+len(tagStart) : start+len(tagStart)+end]
 
 	// unescape attribute
-	data, err := url.QueryUnescape(attr)
+	data, err := url.QueryUnescape(string(meta))
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +84,8 @@ func Create(name string, build map[string]string) (*App, error) {
 	return &App{
 		name:   name,
 		files:  files,
-		index:  doc,
-		meta:   meta,
+		before: index[:start+len(tagStart)],
+		after:  index[start+len(tagStart)+end:],
 		config: config,
 	}, nil
 }
@@ -112,18 +110,19 @@ func (a *App) Set(name string, value interface{}) error {
 		return err
 	}
 
-	// escape and set attribute
-	a.meta.SetAttr("content", url.QueryEscape(string(data)))
+	// escape config
+	data = []byte(url.QueryEscape(string(data)))
 
-	// render document
-	var buf bytes.Buffer
-	err = html.Render(&buf, a.index.Nodes[0])
-	if err != nil {
-		return err
-	}
+	// prepare index
+	index := make([]byte, len(a.before)+len(data)+len(a.after))
+
+	// copy bytes
+	copy(index, a.before)
+	copy(index[len(a.before):], data)
+	copy(index[len(a.before)+len(data):], a.after)
 
 	// update index
-	a.files["index.html"] = buf.Bytes()
+	a.files["index.html"] = index
 
 	return nil
 }
@@ -170,20 +169,11 @@ func (a *App) Clone() *App {
 		config[key] = value
 	}
 
-	// clone index
-	index := goquery.CloneDocument(a.index)
-
-	// find tag
-	meta := index.Find(fmt.Sprintf("meta[name='%s/config/environment']", a.name))
-	if meta.Length() == 0 {
-		panic(fmt.Errorf("config meta tag not found"))
-	}
-
 	return &App{
 		name:   a.name,
 		files:  files,
-		index:  index,
-		meta:   meta,
+		before: a.before,
+		after:  a.after,
 		config: config,
 	}
 }
