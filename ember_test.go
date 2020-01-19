@@ -18,7 +18,7 @@ func TestApp(t *testing.T) {
 	assert.NoError(t, err)
 
 	index := app.files["index.html"]
-	assert.Equal(t, clean(`<!DOCTYPE html>
+	assert.Equal(t, unIndent(`<!DOCTYPE html>
 		<html>
 			<head>
 				<meta charset="utf-8"/>
@@ -35,7 +35,7 @@ func TestApp(t *testing.T) {
 				<script src="/assets/app-6a49fc3c244bed354719f50d3ca3dd38.js" integrity="sha256-Tf7uETTbqK91hJxzmSrymkqPCl8zrt7KEnQ46H7MlSo= sha512-/G/3aD3HMrxRYLK4mUFz7Cbo3miN0lKYHrknOFSzwqop4LOcVMSc02FpvKJFWUm91Ga0DvgC3wN4I4RboTBfLQ=="></script>
 			</body>
 		</html>
-	`), clean(string(index)))
+	`), unIndent(string(index)))
 }
 
 func BenchmarkApp(b *testing.B) {
