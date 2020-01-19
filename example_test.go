@@ -22,7 +22,6 @@ const indexHTML = `<!DOCTYPE html>
   	<body>
 		<script src="/assets/vendor-0602240bb8c898070836851c4cc335bd.js" integrity="sha256-x5KZQsQtD11ZTdqNAQIXsfX2GhhsgLLMP2D6P/QUXtc= sha512-JeMuQGObr+XCFa0pndQDId4cKiqROg4Ai0iR27Zgv9FE32p340XLGz6OpQm8PrmcRGShcxPNkh61sc19Sm87Lw=="></script>
 		<script src="/assets/app-6a49fc3c244bed354719f50d3ca3dd38.js" integrity="sha256-Tf7uETTbqK91hJxzmSrymkqPCl8zrt7KEnQ46H7MlSo= sha512-/G/3aD3HMrxRYLK4mUFz7Cbo3miN0lKYHrknOFSzwqop4LOcVMSc02FpvKJFWUm91Ga0DvgC3wN4I4RboTBfLQ=="></script>
-		<div id="ember-basic-dropdown-wormhole"></div>
   	</body>
 </html>`
 
@@ -84,6 +83,5 @@ func Example() {
 	// <body>
 	// <script src="/assets/vendor-0602240bb8c898070836851c4cc335bd.js" integrity="sha256-x5KZQsQtD11ZTdqNAQIXsfX2GhhsgLLMP2D6P/QUXtc= sha512-JeMuQGObr+XCFa0pndQDId4cKiqROg4Ai0iR27Zgv9FE32p340XLGz6OpQm8PrmcRGShcxPNkh61sc19Sm87Lw=="></script>
 	// <script src="/assets/app-6a49fc3c244bed354719f50d3ca3dd38.js" integrity="sha256-Tf7uETTbqK91hJxzmSrymkqPCl8zrt7KEnQ46H7MlSo= sha512-/G/3aD3HMrxRYLK4mUFz7Cbo3miN0lKYHrknOFSzwqop4LOcVMSc02FpvKJFWUm91Ga0DvgC3wN4I4RboTBfLQ=="></script>
-	// <div id="ember-basic-dropdown-wormhole"></div>
 	// </body></html>
 }

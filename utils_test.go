@@ -2,8 +2,6 @@ package ember
 
 import (
 	"bytes"
-	"encoding/json"
-	"net/url"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -39,14 +37,4 @@ func trim(node *html.Node) {
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
 		trim(child)
 	}
-}
-
-func encode(config Config) string {
-	// marshal config
-	data, err := json.Marshal(config)
-	if err != nil {
-		panic(err)
-	}
-
-	return url.QueryEscape(string(data))
 }
