@@ -55,9 +55,8 @@ func Create(name string, files map[string]string) (*App, error) {
 		return nil, fmt.Errorf("config meta tag start not found")
 	}
 
-	// find tag end
-	tagEnd := `"/>`
-	end := bytes.Index(index[start+len(tagStart):], []byte(tagEnd))
+	// find attribute end
+	end := bytes.Index(index[start+len(tagStart):], []byte(`"`))
 	if end < 0 {
 		return nil, fmt.Errorf("config meta tag end not found")
 	}
