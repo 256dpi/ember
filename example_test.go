@@ -78,7 +78,7 @@ func Example() {
 	// <title>App</title>
 	// <meta name="description" content=""/>
 	// <meta name="viewport" content="width=device-width, initial-scale=1"/>
-	// <meta name="app/config/environment" content="%7B%22APP%22%3A%7B%22name%22%3A%22app%22%2C%22version%22%3A%220.0.0%2Ba7250a80%22%7D%2C%22EmberENV%22%3A%7B%22EXTEND_PROTOTYPES%22%3A%7B%22Date%22%3Afalse%7D%2C%22FEATURES%22%3A%7B%7D%2C%22_JQUERY_INTEGRATION%22%3Afalse%2C%22_TEMPLATE_ONLY_GLIMMER_COMPONENTS%22%3Atrue%7D%2C%22apiBaseURI%22%3A%22http%3A%2F%2Fapi.example.com%22%2C%22environment%22%3A%22production%22%2C%22exportApplicationGlobal%22%3Afalse%2C%22locationType%22%3A%22auto%22%2C%22modulePrefix%22%3A%22app%22%2C%22path%22%3A%22%2Fhello%22%2C%22rootURL%22%3A%22%2F%22%7D"/>
+	// <meta name="app/config/environment" content="%7B%22APP%22:%7B%22name%22:%22app%22%2C%22version%22:%220.0.0+a7250a80%22%7D%2C%22EmberENV%22:%7B%22EXTEND_PROTOTYPES%22:%7B%22Date%22:false%7D%2C%22FEATURES%22:%7B%7D%2C%22_JQUERY_INTEGRATION%22:false%2C%22_TEMPLATE_ONLY_GLIMMER_COMPONENTS%22:true%7D%2C%22apiBaseURI%22:%22http:%2F%2Fapi.example.com%22%2C%22environment%22:%22production%22%2C%22exportApplicationGlobal%22:false%2C%22locationType%22:%22auto%22%2C%22modulePrefix%22:%22app%22%2C%22path%22:%22%2Fhello%22%2C%22rootURL%22:%22%2F%22%7D"/>
 	// <link integrity="" rel="stylesheet" href="/assets/vendor-d41d8cd98f00b204e9800998ecf8427e.css"/>
 	// <link integrity="" rel="stylesheet" href="/assets/app-45c749a3bbece8e3ce4ffd9e6b8addf7.css"/>
 	// </head>

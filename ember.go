@@ -105,8 +105,8 @@ func (a *App) Set(name string, value interface{}) error {
 		return err
 	}
 
-	// escape config
-	data = []byte(url.QueryEscape(string(data)))
+	// escape config (Ember.js uses decodeURIComponent)
+	data = []byte(url.PathEscape(string(data)))
 
 	// prepare index
 	index := make([]byte, len(a.before)+len(data)+len(a.after))
