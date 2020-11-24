@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+var indexHTMLFile = "index.html"
 var headClosingTag = []byte("</head>")
 var bodyClosingTag = []byte("</body>")
 
@@ -47,9 +48,9 @@ func Create(name string, files map[string]string) (*App, error) {
 	}
 
 	// get index
-	index, ok := bytesFiles["index.html"]
+	index, ok := bytesFiles[indexHTMLFile]
 	if !ok {
-		return nil, fmt.Errorf("missing index.html")
+		return nil, fmt.Errorf("missing index file")
 	}
 
 	// find tag start
@@ -137,7 +138,19 @@ func (a *App) recompile() {
 	copy(index[len(a.before)+len(a.env):], a.after)
 
 	// update index
-	a.files["index.html"] = index
+	a.files[indexHTMLFile] = index
+}
+
+// IsPage will return whether the provided path matches a page.
+func (a *App) IsPage(path string) bool {
+	path = strings.Trim(path, "/")
+	return path == indexHTMLFile || a.files[path] == nil
+}
+
+// IsAsset will return whether the provided path matches an asset.
+func (a *App) IsAsset(path string) bool {
+	path = strings.Trim(path, "/")
+	return path != indexHTMLFile && a.files[path] != nil
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -148,13 +161,13 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// remove leading slash
-	pth := strings.TrimPrefix(r.URL.Path, "/")
+	// remove leading and trailing slash
+	pth := strings.Trim(r.URL.Path, "/")
 
 	// get content
 	content, ok := a.files[pth]
 	if !ok {
-		pth = "index.html"
+		pth = indexHTMLFile
 		content, _ = a.files[pth]
 	}
 

@@ -9,6 +9,7 @@ import (
 func TestApp(t *testing.T) {
 	app, err := Create("app", map[string]string{
 		"index.html": indexHTML,
+		"script.js":  `alert("Hello World!");`,
 	})
 	assert.NoError(t, err)
 
@@ -19,6 +20,16 @@ func TestApp(t *testing.T) {
 
 	app.AddInlineStyle("body { background: red; }")
 	app.AddInlineScript(`alert("Hello World!);"`)
+
+	assert.False(t, app.IsAsset(""))
+	assert.False(t, app.IsAsset("foo"))
+	assert.False(t, app.IsAsset("/index.html"))
+	assert.True(t, app.IsAsset("/script.js"))
+
+	assert.True(t, app.IsPage(""))
+	assert.True(t, app.IsPage("foo"))
+	assert.True(t, app.IsPage("/index.html"))
+	assert.False(t, app.IsPage("/script.js"))
 
 	index := app.files["index.html"]
 	assert.Equal(t, unIndent(`<!DOCTYPE html>

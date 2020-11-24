@@ -2,7 +2,6 @@ package ember
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -28,6 +27,7 @@ const indexHTML = `<!DOCTYPE html>
 
 var files = map[string]string{
 	"index.html": indexHTML,
+	"script.js":  `alert("Hello World!");`,
 }
 
 func Example() {
@@ -40,34 +40,28 @@ func Example() {
 	// run listener
 	go func() {
 		panic(http.ListenAndServe("0.0.0.0:4242", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// clone app
-			app := app.Clone()
+			// scope app
+			a := app
 
 			// set dynamic config
-			app.Set("path", r.URL.Path)
+			if a.IsPage(r.URL.Path) {
+				a = a.Clone()
+				a.Set("path", r.URL.Path)
+			}
 
 			// serve app
-			app.ServeHTTP(w, r)
+			a.ServeHTTP(w, r)
 		})))
 	}()
 	time.Sleep(10 * time.Millisecond)
 
-	// get page
-	res, err := http.Get("http://0.0.0.0:4242/hello")
-	if err != nil {
-		panic(err)
-	}
+	// get index
+	index := fetch("http://0.0.0.0:4242/hello")
+	fmt.Println(unIndent(index))
 
-	// ensure body is closed
-	defer res.Body.Close()
-
-	// read body
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(unIndent(string(data)))
+	// get asset
+	asset := fetch("http://0.0.0.0:4242/script.js")
+	fmt.Println(unIndent(asset))
 
 	// Output:
 	// <!DOCTYPE html>
@@ -87,4 +81,6 @@ func Example() {
 	// <script src="/assets/app-6a49fc3c244bed354719f50d3ca3dd38.js" integrity="sha256-Tf7uETTbqK91hJxzmSrymkqPCl8zrt7KEnQ46H7MlSo= sha512-/G/3aD3HMrxRYLK4mUFz7Cbo3miN0lKYHrknOFSzwqop4LOcVMSc02FpvKJFWUm91Ga0DvgC3wN4I4RboTBfLQ=="></script>
 	// </body>
 	// </html>
+	//
+	// alert("Hello World!");
 }
