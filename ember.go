@@ -23,6 +23,7 @@ type App struct {
 	before []byte
 	env    []byte
 	after  []byte
+	parent *App
 }
 
 // MustCreate will call Create and panic on errors.
@@ -76,7 +77,7 @@ func Create(name string, files map[string]string) (*App, error) {
 	}
 
 	// unmarshal configuration
-	var config map[string]interface{}
+	config := map[string]interface{}{}
 	err = json.Unmarshal([]byte(data), &config)
 	if err != nil {
 		return nil, err
@@ -92,6 +93,9 @@ func Create(name string, files map[string]string) (*App, error) {
 
 // Set will set the provided settings on the application.
 func (a *App) Set(name string, value interface{}) {
+	// copy config if missing
+	a.copyConfig()
+
 	// set config
 	a.config[name] = value
 
@@ -129,6 +133,9 @@ func (a *App) AddInlineScript(js string) {
 }
 
 func (a *App) recompile() {
+	// copy files if missing
+	a.copyFiles()
+
 	// prepare buffer
 	index := make([]byte, len(a.before)+len(a.env)+len(a.after))
 
@@ -144,13 +151,13 @@ func (a *App) recompile() {
 // IsPage will return whether the provided path matches a page.
 func (a *App) IsPage(path string) bool {
 	path = strings.Trim(path, "/")
-	return path == indexHTMLFile || a.files[path] == nil
+	return path == indexHTMLFile || a.getFiles()[path] == nil
 }
 
 // IsAsset will return whether the provided path matches an asset.
 func (a *App) IsAsset(path string) bool {
 	path = strings.Trim(path, "/")
-	return path != indexHTMLFile && a.files[path] != nil
+	return path != indexHTMLFile && a.getFiles()[path] != nil
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -165,10 +172,10 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pth := strings.Trim(r.URL.Path, "/")
 
 	// get content
-	content, ok := a.files[pth]
+	content, ok := a.getFiles()[pth]
 	if !ok {
 		pth = indexHTMLFile
-		content, _ = a.files[pth]
+		content, _ = a.getFiles()[pth]
 	}
 
 	// get mime type
@@ -205,23 +212,48 @@ func (a *App) Handler(configure func(*App, *http.Request)) http.Handler {
 
 // Clone will make a copy of the application.
 func (a *App) Clone() *App {
-	// clone files
-	files := map[string][]byte{}
-	for file, content := range a.files {
-		files[file] = content
-	}
-
-	// clone config
-	config := map[string]interface{}{}
-	for key, value := range a.config {
-		config[key] = value
-	}
-
 	return &App{
-		files:  files,
 		before: a.before,
 		env:    a.env,
 		after:  a.after,
-		config: config,
+		parent: a,
+	}
+}
+
+func (a *App) getFiles() map[string][]byte {
+	// check files
+	if a.files != nil {
+		return a.files
+	}
+
+	return a.parent.getFiles()
+}
+
+func (a *App) copyFiles() {
+	if a.files == nil {
+		parent := a.getFiles()
+		a.files = map[string][]byte{}
+		for key, value := range parent {
+			a.files[key] = value
+		}
+	}
+}
+
+func (a *App) getConfig() map[string]interface{} {
+	// check config
+	if a.config != nil {
+		return a.config
+	}
+
+	return a.parent.getConfig()
+}
+
+func (a *App) copyConfig() {
+	if a.config == nil {
+		parent := a.getConfig()
+		a.config = map[string]interface{}{}
+		for key, value := range parent {
+			a.config[key] = value
+		}
 	}
 }
