@@ -181,6 +181,28 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(content)
 }
 
+// Handler will construct and return a dynamic handler that invokes the provided
+// callback for each page request to allow dynamic configuration. If no dynamic
+// configuration is needed, the app should be serve directly.
+func (a *App) Handler(configure func(*App, *http.Request)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// handle assets
+		if a.IsAsset(r.URL.Path) {
+			a.ServeHTTP(w, r)
+			return
+		}
+
+		// clone
+		clone := a.Clone()
+
+		// configure
+		configure(clone, r)
+
+		// serve
+		clone.ServeHTTP(w, r)
+	})
+}
+
 // Clone will make a copy of the application.
 func (a *App) Clone() *App {
 	// clone files

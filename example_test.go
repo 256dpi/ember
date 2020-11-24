@@ -39,18 +39,8 @@ func Example() {
 
 	// run listener
 	go func() {
-		panic(http.ListenAndServe("0.0.0.0:4242", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// scope app
-			a := app
-
-			// set dynamic config
-			if a.IsPage(r.URL.Path) {
-				a = a.Clone()
-				a.Set("path", r.URL.Path)
-			}
-
-			// serve app
-			a.ServeHTTP(w, r)
+		panic(http.ListenAndServe("0.0.0.0:4242", app.Handler(func(app *App, r *http.Request) {
+			app.Set("path", r.URL.Path)
 		})))
 	}()
 	time.Sleep(10 * time.Millisecond)
