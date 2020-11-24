@@ -15,9 +15,10 @@ import (
 // App is an in-memory representation of an Ember.js application.
 type App struct {
 	files  map[string][]byte
-	before []byte
-	after  []byte
 	config map[string]interface{}
+	before []byte
+	env    []byte
+	after  []byte
 }
 
 // MustCreate will call Create and panic on errors.
@@ -106,20 +107,25 @@ func (a *App) Set(name string, value interface{}) error {
 	}
 
 	// escape config (Ember.js uses decodeURIComponent)
-	data = []byte(url.PathEscape(string(data)))
+	a.env = []byte(url.PathEscape(string(data)))
 
-	// prepare index
-	index := make([]byte, len(a.before)+len(data)+len(a.after))
+	// compile
+	a.compile()
+
+	return nil
+}
+
+func (a *App) compile() {
+	// prepare buffer
+	index := make([]byte, len(a.before)+len(a.env)+len(a.after))
 
 	// copy bytes
 	copy(index, a.before)
-	copy(index[len(a.before):], data)
-	copy(index[len(a.before)+len(data):], a.after)
+	copy(index[len(a.before):], a.env)
+	copy(index[len(a.before)+len(a.env):], a.after)
 
 	// update index
 	a.files["index.html"] = index
-
-	return nil
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -167,6 +173,7 @@ func (a *App) Clone() *App {
 	return &App{
 		files:  files,
 		before: a.before,
+		env:    a.env,
 		after:  a.after,
 		config: config,
 	}
