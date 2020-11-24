@@ -12,6 +12,9 @@ import (
 	"strings"
 )
 
+var headClosingTag = []byte("</head>")
+var bodyClosingTag = []byte("</body>")
+
 // App is an in-memory representation of an Ember.js application.
 type App struct {
 	files  map[string][]byte
@@ -86,36 +89,45 @@ func Create(name string, files map[string]string) (*App, error) {
 	}, nil
 }
 
-// MustSet will call Set and panic on errors.
-func (a *App) MustSet(name string, value interface{}) {
-	// set value
-	err := a.Set(name, value)
-	if err != nil {
-		panic(err)
-	}
-}
-
 // Set will set the provided settings on the application.
-func (a *App) Set(name string, value interface{}) error {
+func (a *App) Set(name string, value interface{}) {
 	// set config
 	a.config[name] = value
 
 	// marshal config
 	data, err := json.Marshal(a.config)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	// escape config (Ember.js uses decodeURIComponent)
 	a.env = []byte(url.PathEscape(string(data)))
 
-	// compile
-	a.compile()
-
-	return nil
+	// recompile
+	a.recompile()
 }
 
-func (a *App) compile() {
+// AddInlineStyle will append the provided CSS at the end of the head tag.
+func (a *App) AddInlineStyle(css string) {
+	// inject style
+	style := []byte("<style>" + css + "</style>\n</head>")
+	a.after = bytes.Replace(a.after, headClosingTag, style, 1)
+
+	// recompile
+	a.recompile()
+}
+
+// AddInlineScript will append the provides JS at the end of the body tag.
+func (a *App) AddInlineScript(js string) {
+	// inject script
+	script := []byte("<script>" + js + "</script>\n</body>")
+	a.after = bytes.Replace(a.after, bodyClosingTag, script, 1)
+
+	// recompile
+	a.recompile()
+}
+
+func (a *App) recompile() {
 	// prepare buffer
 	index := make([]byte, len(a.before)+len(a.env)+len(a.after))
 

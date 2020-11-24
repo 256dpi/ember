@@ -35,7 +35,7 @@ func Example() {
 	app := MustCreate("app", files)
 
 	// set static config
-	app.MustSet("apiBaseURI", "http://api.example.com")
+	app.Set("apiBaseURI", "http://api.example.com")
 
 	// run listener
 	go func() {
@@ -44,7 +44,7 @@ func Example() {
 			app := app.Clone()
 
 			// set dynamic config
-			app.MustSet("path", r.URL.Path)
+			app.Set("path", r.URL.Path)
 
 			// serve app
 			app.ServeHTTP(w, r)
