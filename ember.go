@@ -18,12 +18,10 @@ var bodyClosingTag = []byte("</body>")
 
 // App is an in-memory representation of an Ember.js application.
 type App struct {
+	parent *App
 	files  map[string][]byte
 	config map[string]interface{}
-	before []byte
-	env    []byte
-	after  []byte
-	parent *App
+	index  [3][]byte
 }
 
 // MustCreate will call Create and panic on errors.
@@ -67,11 +65,13 @@ func Create(name string, files map[string]string) (*App, error) {
 		return nil, fmt.Errorf("config meta tag end not found")
 	}
 
-	// get meta content
-	content := index[start+len(tagStart) : start+len(tagStart)+end]
+	// get chunks
+	head := index[:start+len(tagStart)]
+	meta := index[start+len(tagStart) : start+len(tagStart)+end]
+	tail := index[start+len(tagStart)+end:]
 
-	// unescape content
-	data, err := url.QueryUnescape(string(content))
+	// unescape meta
+	data, err := url.QueryUnescape(string(meta))
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +85,7 @@ func Create(name string, files map[string]string) (*App, error) {
 
 	return &App{
 		files:  bytesFiles,
-		before: index[:start+len(tagStart)],
-		after:  index[start+len(tagStart)+end:],
+		index:  [3][]byte{head, meta, tail},
 		config: config,
 	}, nil
 }
@@ -106,7 +105,7 @@ func (a *App) Set(name string, value interface{}) {
 	}
 
 	// escape config (Ember.js uses decodeURIComponent)
-	a.env = []byte(url.PathEscape(string(data)))
+	a.index[1] = []byte(url.PathEscape(string(data)))
 
 	// recompile
 	a.recompile()
@@ -116,7 +115,7 @@ func (a *App) Set(name string, value interface{}) {
 func (a *App) AddInlineStyle(css string) {
 	// inject style
 	style := []byte("<style>" + css + "</style>\n</head>")
-	a.after = bytes.Replace(a.after, headClosingTag, style, 1)
+	a.index[2] = bytes.Replace(a.index[2], headClosingTag, style, 1)
 
 	// recompile
 	a.recompile()
@@ -126,7 +125,7 @@ func (a *App) AddInlineStyle(css string) {
 func (a *App) AddInlineScript(js string) {
 	// inject script
 	script := []byte("<script>" + js + "</script>\n</body>")
-	a.after = bytes.Replace(a.after, bodyClosingTag, script, 1)
+	a.index[2] = bytes.Replace(a.index[2], bodyClosingTag, script, 1)
 
 	// recompile
 	a.recompile()
@@ -137,15 +136,15 @@ func (a *App) recompile() {
 	a.copyFiles()
 
 	// prepare buffer
-	index := make([]byte, len(a.before)+len(a.env)+len(a.after))
+	buffer := make([]byte, len(a.index[0])+len(a.index[1])+len(a.index[2]))
 
 	// copy bytes
-	copy(index, a.before)
-	copy(index[len(a.before):], a.env)
-	copy(index[len(a.before)+len(a.env):], a.after)
+	copy(buffer, a.index[0])
+	copy(buffer[len(a.index[0]):], a.index[1])
+	copy(buffer[len(a.index[0])+len(a.index[1]):], a.index[2])
 
 	// update index
-	a.files[indexHTMLFile] = index
+	a.files[indexHTMLFile] = buffer
 }
 
 // IsPage will return whether the provided path matches a page.
@@ -213,10 +212,8 @@ func (a *App) Handler(configure func(*App, *http.Request)) http.Handler {
 // Clone will make a copy of the application.
 func (a *App) Clone() *App {
 	return &App{
-		before: a.before,
-		env:    a.env,
-		after:  a.after,
 		parent: a,
+		index:  a.index,
 	}
 }
 
