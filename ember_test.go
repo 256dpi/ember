@@ -18,6 +18,7 @@ func TestApp(t *testing.T) {
 		"baz": "quz qux",
 	})
 
+	app.AddFile("foo.html", "Hello World!")
 	app.AddInlineStyle("body { background: red; }")
 	app.AddInlineScript(`alert("Hello World!);"`)
 
@@ -52,6 +53,9 @@ func TestApp(t *testing.T) {
 			</body>
 		</html>
 	`), unIndent(string(index)))
+
+	foo := app.files["foo.html"]
+	assert.Equal(t, "Hello World!", string(foo))
 }
 
 func BenchmarkAppCloneSet(b *testing.B) {

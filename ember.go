@@ -147,6 +147,15 @@ func (a *App) recompile() {
 	a.files[indexHTMLFile] = buffer
 }
 
+// AddFile will add the specified file to the app.
+func (a *App) AddFile(name string, contents string) {
+	// copy files if missing
+	a.copyFiles()
+
+	// set file
+	a.files[name] = []byte(contents)
+}
+
 // IsPage will return whether the provided path matches a page.
 func (a *App) IsPage(path string) bool {
 	path = strings.Trim(path, "/")
