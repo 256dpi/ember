@@ -20,8 +20,8 @@ var bodyClosingTag = []byte("</body>")
 type App struct {
 	parent *App
 	files  map[string][]byte
-	config map[string]interface{}
 	index  [3][]byte
+	config map[string]interface{}
 }
 
 // MustCreate will call Create and panic on errors.
@@ -198,10 +198,8 @@ func (a *App) Handler(configure func(*App, *http.Request)) http.Handler {
 			return
 		}
 
-		// clone
+		// configure clone
 		clone := a.Clone()
-
-		// configure
 		configure(clone, r)
 
 		// serve
