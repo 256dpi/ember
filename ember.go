@@ -113,9 +113,13 @@ func (a *App) Set(name string, value interface{}) {
 
 // AddInlineStyle will append the provided CSS at the end of the head tag.
 func (a *App) AddInlineStyle(css string) {
-	// inject style
-	style := []byte("<style>" + css + "</style>\n</head>")
-	a.index[2] = bytes.Replace(a.index[2], headClosingTag, style, 1)
+	a.AppendHead("<style>" + css + "</style>")
+}
+
+// AppendHead will append the provided tag to the head tag.
+func (a *App) AppendHead(tag string) {
+	// inject tag
+	a.index[2] = bytes.Replace(a.index[2], headClosingTag, []byte(tag+"\n</head>"), 1)
 
 	// recompile
 	a.recompile()
@@ -123,9 +127,13 @@ func (a *App) AddInlineStyle(css string) {
 
 // AddInlineScript will append the provides JS at the end of the body tag.
 func (a *App) AddInlineScript(js string) {
-	// inject script
-	script := []byte("<script>" + js + "</script>\n</body>")
-	a.index[2] = bytes.Replace(a.index[2], bodyClosingTag, script, 1)
+	a.AppendBody("<script>" + js + "</script>")
+}
+
+// AppendBody will append the provided tag to the body tag.
+func (a *App) AppendBody(tag string) {
+	// inject tag
+	a.index[2] = bytes.Replace(a.index[2], bodyClosingTag, []byte(tag+"\n</body>"), 1)
 
 	// recompile
 	a.recompile()
