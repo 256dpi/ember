@@ -144,10 +144,15 @@ func (a *App) AppendBody(tag string) {
 	a.recompile()
 }
 
-// PrefixAssetsPaths will prefix all assets paths with the specified prefix.
-func (a *App) PrefixAssetsPaths(prefix string) {
+// Prefix will change the root URL and prefix all assets paths with the
+// specified prefix. The app must be serve with http.StripPrefix() to work
+// correctly.
+func (a *App) Prefix(prefix string) {
 	// ensure prefix
 	prefix = "/" + strings.Trim(prefix, "/")
+
+	// set root url
+	a.Set("rootURL", prefix+"/")
 
 	// prefix index paths
 	a.index[0] = bytes.Replace(a.index[0], []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
