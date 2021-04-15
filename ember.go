@@ -139,6 +139,37 @@ func (a *App) AppendBody(tag string) {
 	a.recompile()
 }
 
+// PrefixAssetsPaths will prefix all assets paths with the specified prefix.
+func (a *App) PrefixAssetsPaths(prefix string) {
+	// ensure prefix
+	prefix = "/" + strings.Trim(prefix, "/")
+
+	// prefix index paths
+	a.index[0] = bytes.Replace(a.index[0], []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
+	a.index[2] = bytes.Replace(a.index[2], []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
+	a.index[2] = bytes.Replace(a.index[2], []byte(`href="/assets/`), []byte(`href="`+prefix+`/assets/`), -1)
+
+	// recompile
+	a.recompile()
+
+	// prefix files
+	for name, file := range a.files {
+		// skip index
+		if name == indexHTMLFile {
+			continue
+		}
+
+		// skip other files
+		if !strings.HasSuffix(name, ".html") {
+			continue
+		}
+
+		// prefix file paths
+		a.files[name] = bytes.Replace(file, []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
+		a.files[name] = bytes.Replace(file, []byte(`href="/assets/`), []byte(`href="`+prefix+`/assets/`), -1)
+	}
+}
+
 func (a *App) recompile() {
 	// copy files if missing
 	a.copyFiles()
