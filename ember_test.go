@@ -13,10 +13,17 @@ func TestApp(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	assert.Equal(t, nil, app.Get("foo"))
+
 	app.Set("foo", map[string]interface{}{
 		"bar": 3.14,
 		"baz": "quz qux",
 	})
+
+	assert.Equal(t, map[string]interface{}{
+		"bar": 3.14,
+		"baz": "quz qux",
+	}, app.Get("foo"))
 
 	app.AddFile("foo.html", "Hello World!")
 	app.AddInlineStyle("body { background: red; }")

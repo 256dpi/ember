@@ -90,6 +90,11 @@ func Create(name string, files map[string]string) (*App, error) {
 	}, nil
 }
 
+// Get will get the specified setting from the application.
+func (a *App) Get(name string) interface{} {
+	return a.getConfig()[name]
+}
+
 // Set will set the provided settings on the application.
 func (a *App) Set(name string, value interface{}) {
 	// copy config if missing
@@ -237,7 +242,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Handler will construct and return a dynamic handler that invokes the provided
 // callback for each page request to allow dynamic configuration. If no dynamic
-// configuration is needed, the app should be serve directly.
+// configuration is needed, the app should be served directly.
 func (a *App) Handler(configure func(*App, *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// handle assets
