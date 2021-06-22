@@ -12,7 +12,7 @@ func unIndent(str string) string {
 	return unIndentPattern.ReplaceAllString(str, "\n")
 }
 
-func fetch(url string) string {
+func fetch(url string) (string, string) {
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -27,5 +27,5 @@ func fetch(url string) string {
 		panic(err)
 	}
 
-	return string(data)
+	return string(data), res.Header.Get("Content-Type")
 }

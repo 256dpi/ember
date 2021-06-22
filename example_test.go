@@ -46,14 +46,17 @@ func Example() {
 	time.Sleep(10 * time.Millisecond)
 
 	// get index
-	index := fetch("http://0.0.0.0:4242/hello")
+	index, typ := fetch("http://0.0.0.0:4242/hello")
+	fmt.Println("==>", typ)
 	fmt.Println(unIndent(index))
 
 	// get asset
-	asset := fetch("http://0.0.0.0:4242/script.js")
+	asset, typ := fetch("http://0.0.0.0:4242/script.js")
+	fmt.Println("==>", typ)
 	fmt.Println(unIndent(asset))
 
 	// Output:
+	// ==> text/html; charset=utf-8
 	// <!DOCTYPE html>
 	// <html>
 	// <head>
@@ -72,5 +75,6 @@ func Example() {
 	// </body>
 	// </html>
 	//
+	// ==> application/javascript
 	// alert("Hello World!");
 }

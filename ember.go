@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"mime"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/256dpi/serve"
 )
 
 var indexHTMLFile = "index.html"
@@ -236,7 +237,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get mime type
-	mimeType := mime.TypeByExtension(path.Ext(pth))
+	mimeType := serve.MimeTypeByExtension(path.Ext(pth), true)
 
 	// set content type
 	w.Header().Set("Content-Type", mimeType)
