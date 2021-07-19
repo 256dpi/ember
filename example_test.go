@@ -25,9 +25,11 @@ const indexHTML = `<!DOCTYPE html>
 </html>
 `
 
+const scriptJS = `alert("Hello World!");`
+
 var files = map[string]string{
 	"index.html": indexHTML,
-	"script.js":  `alert("Hello World!");`,
+	"script.js":  scriptJS,
 }
 
 func Example() {

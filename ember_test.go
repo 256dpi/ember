@@ -9,7 +9,7 @@ import (
 func TestApp(t *testing.T) {
 	app, err := Create("app", map[string]string{
 		"index.html": indexHTML,
-		"script.js":  `alert("Hello World!");`,
+		"script.js":  scriptJS,
 	})
 	assert.NoError(t, err)
 
