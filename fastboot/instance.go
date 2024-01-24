@@ -25,7 +25,7 @@ type manifest struct {
 	} `json:"fastboot"`
 }
 
-// Result represents the result of a Fastboot visit.
+// Result represents the result of an instance visit.
 type Result struct {
 	HeadContent    string            `json:"headContent"`
 	BodyContent    string            `json:"bodyContent"`
@@ -34,16 +34,23 @@ type Result struct {
 	BodyAttributes map[string]string `json:"bodyAttributes"`
 }
 
-// HTML will return the full HTML.
-func (r *Result) HTML() string {
-	attributes := func(attrs map[string]string) string {
-		var result string
-		for name, value := range attrs {
-			result += fmt.Sprintf(` %s="%s"`, name, value)
-		}
-		return result
-	}
+// HTMLAttributesString will return the HTML attributes as a string.
+func (r *Result) HTMLAttributesString() string {
+	return attributesString(r.HTMLAttributes)
+}
 
+// HeadAttributesString will return the head attributes as a string.
+func (r *Result) HeadAttributesString() string {
+	return attributesString(r.HeadAttributes)
+}
+
+// BodyAttributesString will return the body attributes as a string.
+func (r *Result) BodyAttributesString() string {
+	return attributesString(r.BodyAttributes)
+}
+
+// HTML will build and return the full document.
+func (r *Result) HTML() string {
 	return fmt.Sprintf(`<!DOCTYPE html>
 		<html%s>
 			<head%s>
@@ -54,10 +61,10 @@ func (r *Result) HTML() string {
 			</body>
 		</html>
 	`,
-		attributes(r.HTMLAttributes),
-		attributes(r.HeadAttributes),
+		r.HTMLAttributesString(),
+		r.HeadAttributesString(),
 		r.HeadContent,
-		attributes(r.BodyAttributes),
+		r.BodyAttributesString(),
 		r.BodyContent,
 	)
 }
@@ -80,8 +87,8 @@ type Instance struct {
 	errs   []error
 }
 
-// Boot will boot the provided app in a headless browser and return a running
-// instance.
+// Boot will boot the provided Fastboot-capable app in a headless browser and
+// return a running instance.
 func Boot(app *ember.App) (*Instance, error) {
 	// parse manifest
 	var manifest manifest
@@ -186,8 +193,7 @@ func Boot(app *ember.App) (*Instance, error) {
 	return instance, nil
 }
 
-// Visit will run the provided app in a headless browser and return the rendered
-// HTML for the specified URL.
+// Visit will visit the provided URL and return the result.
 func (i *Instance) Visit(url string) (Result, error) {
 	// prepare actions
 	var actions []chromedp.Action
@@ -293,4 +299,12 @@ func Render(app *ember.App, url string) (Result, error) {
 	}
 
 	return result, nil
+}
+
+func attributesString(attrs map[string]string) string {
+	var result string
+	for name, value := range attrs {
+		result += fmt.Sprintf(` %s="%s"`, name, value)
+	}
+	return result
 }
