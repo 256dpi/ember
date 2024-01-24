@@ -34,29 +34,41 @@ type manifest struct {
 // TODO: Cache responses?
 // TODO: Support for different manifests schemas?
 
-// Visit will run the provided app in a headless browser and return the rendered
-// HTML for the specified URL.
-func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
+// Instance represents a running Fastboot instance.
+type Instance struct {
+	app    *ember.App
+	man    manifest
+	ctx    context.Context
+	cancel func()
+	errs   []error
+}
+
+// Boot will boot the provided app in a headless browser and return a running
+// instance.
+func Boot(app *ember.App) (*Instance, error) {
 	// parse manifest
 	var manifest manifest
 	err := json.Unmarshal(app.File("package.json"), &manifest)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// ensure context
-	if ctx == nil {
-		var cancel func()
-		ctx, cancel = chromedp.NewContext(ctx)
-		defer cancel()
+	// create context
+	ctx, cancel := chromedp.NewContext(context.Background())
+
+	// prepare instance
+	instance := &Instance{
+		app:    app,
+		man:    manifest,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	// collect errors
-	var logErrors []string
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		if ev, ok := ev.(*log.EventEntryAdded); ok {
 			if ev.Entry.Level == log.LevelError {
-				logErrors = append(logErrors, fmt.Sprintf("%s (%s)", ev.Entry.Text, ev.Entry.URL))
+				instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", ev.Entry.Text, ev.Entry.URL))
 			}
 		}
 	})
@@ -66,7 +78,7 @@ func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
 
 	// prepare environment
 	actions = append(actions, chromedp.Evaluate(`
-		const config = `+string(manifest.Fastboot.Config)+`;
+		const config = `+string(instance.man.Fastboot.Config)+`;
 
 		window.FastBoot = {
 			config(name) {
@@ -107,21 +119,44 @@ func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
 	`, nil))
 
 	// evaluate scripts
-	for _, file := range manifest.Fastboot.Manifest.VendorFiles {
-		actions = append(actions, chromedp.Evaluate(string(app.File(file)), nil))
+	for _, file := range instance.man.Fastboot.Manifest.VendorFiles {
+		actions = append(actions, chromedp.Evaluate(string(instance.app.File(file)), nil))
 	}
-	for _, file := range manifest.Fastboot.Manifest.AppFiles {
-		actions = append(actions, chromedp.Evaluate(string(app.File(file)), nil))
+	for _, file := range instance.man.Fastboot.Manifest.AppFiles {
+		actions = append(actions, chromedp.Evaluate(string(instance.app.File(file)), nil))
 	}
 
 	// run application
 	actions = append(actions, chromedp.Evaluate(`
 		(async () => {
-			const app = require('~fastboot/app-factory').default()
-			await app.boot();
+			window.$app = require('~fastboot/app-factory').default()
+			await $app.boot();
 	
-			const instance = await app.buildInstance();
-	
+			window.$instance = await $app.buildInstance();
+		})()
+	`, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
+		params.AwaitPromise = true
+		return params
+	}))
+
+	// prepare application
+	err = chromedp.Run(instance.ctx, actions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return instance, nil
+}
+
+// Visit will run the provided app in a headless browser and return the rendered
+// HTML for the specified URL.
+func (i *Instance) Visit(url string) (string, error) {
+	// prepare actions
+	var actions []chromedp.Action
+
+	// run application
+	actions = append(actions, chromedp.Evaluate(`
+		(async () => {
 			const info = {
 				request: {
 					method: 'GET',
@@ -142,7 +177,7 @@ func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
 				},
 			};
 	
-			instance.register('info:-fastboot', info, { instantiate: false });
+			$instance.register('info:-fastboot', info, { instantiate: false });
 	
 			const options = {
 				document: window.document,
@@ -150,9 +185,11 @@ func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
 				rootElement: window.document.body,
 			};
 	
-			await instance.boot(options);
-			await instance.visit('`+url+`', options);
+			await $instance.boot(options);
+			await $instance.visit('`+url+`', options);
 			await info.deferredPromise;
+	
+			// $instance.destroy();
 	
 			return info;
 		})()
@@ -180,16 +217,46 @@ func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
 	}))
 
 	// render application
-	err = chromedp.Run(ctx, actions...)
+	err := chromedp.Run(i.ctx, actions...)
 	if err != nil {
 		return "", err
 	}
 
 	// handle log errors
-	if len(logErrors) > 0 {
-		return "", fmt.Errorf("log errors: %s", logErrors)
+	if len(i.errs) > 0 {
+		err = fmt.Errorf("log errors: %s", i.errs)
+		i.errs = nil
+		return "", err
 	}
 
-	// write html
+	return html, nil
+}
+
+// Close will close the instance and release all resources.
+func (i *Instance) Close() {
+	// cancel context
+	i.cancel()
+
+	// clear context
+	i.ctx = nil
+	i.cancel = nil
+}
+
+// Render will run the provided app in a headless browser and return the HTML
+// output for the specified URL.
+func Render(app *ember.App, url string) (string, error) {
+	// boot app
+	instance, err := Boot(app)
+	if err != nil {
+		return "", err
+	}
+	defer instance.Close()
+
+	// visit URL
+	html, err := instance.Visit(url)
+	if err != nil {
+		return "", err
+	}
+
 	return html, nil
 }
