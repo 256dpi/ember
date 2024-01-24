@@ -36,7 +36,7 @@ type manifest struct {
 
 // Visit will run the provided app in a headless browser and return the rendered
 // HTML for the specified URL.
-func Visit(app *ember.App, url string) (string, error) {
+func Visit(ctx context.Context, app *ember.App, url string) (string, error) {
 	// parse manifest
 	var manifest manifest
 	err := json.Unmarshal(app.File("package.json"), &manifest)
@@ -44,12 +44,12 @@ func Visit(app *ember.App, url string) (string, error) {
 		return "", err
 	}
 
-	// prepare context
-	ctx := context.Background()
-
-	// wrap context
-	ctx, cancel := chromedp.NewContext(ctx)
-	defer cancel()
+	// ensure context
+	if ctx == nil {
+		var cancel func()
+		ctx, cancel = chromedp.NewContext(ctx)
+		defer cancel()
+	}
 
 	// collect errors
 	var logErrors []string
