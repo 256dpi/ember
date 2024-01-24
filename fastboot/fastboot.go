@@ -3,6 +3,7 @@ package fastboot
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/chromedp/cdproto/dom"
@@ -76,6 +77,9 @@ func Boot(app *ember.App) (*Instance, error) {
 	// prepare actions
 	var actions []chromedp.Action
 
+	// open blank page
+	actions = append(actions, chromedp.Navigate("about:blank"))
+
 	// prepare environment
 	actions = append(actions, chromedp.Evaluate(`
 		const config = `+string(instance.man.Fastboot.Config)+`;
@@ -131,8 +135,6 @@ func Boot(app *ember.App) (*Instance, error) {
 		(async () => {
 			window.$app = require('~fastboot/app-factory').default()
 			await $app.boot();
-	
-			window.$instance = await $app.buildInstance();
 		})()
 	`, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
 		params.AwaitPromise = true
@@ -157,6 +159,12 @@ func (i *Instance) Visit(url string) (string, error) {
 	// run application
 	actions = append(actions, chromedp.Evaluate(`
 		(async () => {
+			if (window.$instance) {
+				await $instance.destroy();
+			}
+	
+			window.$instance = await $app.buildInstance();
+	
 			const info = {
 				request: {
 					method: 'GET',
@@ -189,8 +197,6 @@ func (i *Instance) Visit(url string) (string, error) {
 			await $instance.visit('`+url+`', options);
 			await info.deferredPromise;
 	
-			// $instance.destroy();
-	
 			return info;
 		})()
 	`, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
@@ -222,9 +228,9 @@ func (i *Instance) Visit(url string) (string, error) {
 		return "", err
 	}
 
-	// handle log errors
+	// handle errors
 	if len(i.errs) > 0 {
-		err = fmt.Errorf("log errors: %s", i.errs)
+		err = errors.Join(i.errs...)
 		i.errs = nil
 		return "", err
 	}
