@@ -14,11 +14,13 @@ import (
 )
 
 var indexHTMLFile = "index.html"
+var headOpeningTag = []byte("<head>")
 var headClosingTag = []byte("</head>")
 var bodyClosingTag = []byte("</body>")
 
 // App is an in-memory representation of an Ember.js application.
 type App struct {
+	name   string
 	parent *App
 	files  map[string][]byte
 	index  [3][]byte
@@ -85,10 +87,16 @@ func Create(name string, files map[string]string) (*App, error) {
 	}
 
 	return &App{
+		name:   name,
 		files:  bytesFiles,
 		index:  [3][]byte{head, meta, tail},
 		config: config,
 	}, nil
+}
+
+// Name will return the name of the application.
+func (a *App) Name() string {
+	return a.name
 }
 
 // Get will get the specified setting from the application.
@@ -120,6 +128,15 @@ func (a *App) Set(name string, value interface{}) {
 // AddInlineStyle will append the provided CSS at the end of the head tag.
 func (a *App) AddInlineStyle(css string) {
 	a.AppendHead("<style>" + css + "</style>")
+}
+
+// PrependHead will prepend the provided tag to the head tag.
+func (a *App) PrependHead(tag string) {
+	// inject tag
+	a.index[0] = bytes.Replace(a.index[0], headOpeningTag, []byte("<head>\n"+tag), 1)
+
+	// recompile
+	a.recompile()
 }
 
 // AppendHead will append the provided tag to the head tag.
@@ -216,6 +233,11 @@ func (a *App) IsPage(path string) bool {
 func (a *App) IsAsset(path string) bool {
 	path = strings.Trim(path, "/")
 	return path != indexHTMLFile && a.getFiles()[path] != nil
+}
+
+// File returns the contents of the specified file.
+func (a *App) File(path string) []byte {
+	return a.getFiles()[path]
 }
 
 // ServeHTTP implements the http.Handler interface.
