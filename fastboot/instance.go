@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
@@ -24,6 +23,43 @@ type manifest struct {
 			VendorFiles []string `json:"vendorFiles"`
 		} `json:"manifest"`
 	} `json:"fastboot"`
+}
+
+// Result represents the result of a Fastboot visit.
+type Result struct {
+	HeadContent    string            `json:"headContent"`
+	BodyContent    string            `json:"bodyContent"`
+	HTMLAttributes map[string]string `json:"htmlAttributes"`
+	HeadAttributes map[string]string `json:"headAttributes"`
+	BodyAttributes map[string]string `json:"bodyAttributes"`
+}
+
+// HTML will return the full HTML.
+func (r *Result) HTML() string {
+	attributes := func(attrs map[string]string) string {
+		var result string
+		for name, value := range attrs {
+			result += fmt.Sprintf(` %s="%s"`, name, value)
+		}
+		return result
+	}
+
+	return fmt.Sprintf(`<!DOCTYPE html>
+		<html%s>
+			<head%s>
+				%s
+			</head>
+			<body%s>
+				%s
+			</body>
+		</html>
+	`,
+		attributes(r.HTMLAttributes),
+		attributes(r.HeadAttributes),
+		r.HeadContent,
+		attributes(r.BodyAttributes),
+		r.BodyContent,
+	)
 }
 
 // TODO: Should we disable image downloads and CSS stuff?
@@ -152,7 +188,7 @@ func Boot(app *ember.App) (*Instance, error) {
 
 // Visit will run the provided app in a headless browser and return the rendered
 // HTML for the specified URL.
-func (i *Instance) Visit(url string) (string, error) {
+func (i *Instance) Visit(url string) (Result, error) {
 	// prepare actions
 	var actions []chromedp.Action
 
@@ -205,37 +241,29 @@ func (i *Instance) Visit(url string) (string, error) {
 	}))
 
 	// capture HTML
-	var html string
-	actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
-		// get root
-		node, err := dom.GetDocument().Do(ctx)
-		if err != nil {
-			return err
-		}
-
-		// capture HTML
-		html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}))
+	var result Result
+	actions = append(actions, chromedp.Evaluate(`({
+		headContent: document.head.innerHTML,
+		bodyContent: document.body.innerHTML,
+		htmlAttributes: Object.fromEntries(Array.from(document.documentElement.attributes).map(a => [a.name, a.value])),
+		headAttributes: Object.fromEntries(Array.from(document.head.attributes).map(a => [a.name, a.value])),
+		bodyAttributes: Object.fromEntries(Array.from(document.body.attributes).map(a => [a.name, a.value])),
+	})`, &result))
 
 	// render application
 	err := chromedp.Run(i.ctx, actions...)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 
 	// handle errors
 	if len(i.errs) > 0 {
 		err = errors.Join(i.errs...)
 		i.errs = nil
-		return "", err
+		return Result{}, err
 	}
 
-	return html, nil
+	return result, nil
 }
 
 // Close will close the instance and release all resources.
@@ -250,19 +278,19 @@ func (i *Instance) Close() {
 
 // Render will run the provided app in a headless browser and return the HTML
 // output for the specified URL.
-func Render(app *ember.App, url string) (string, error) {
+func Render(app *ember.App, url string) (Result, error) {
 	// boot app
 	instance, err := Boot(app)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	defer instance.Close()
 
 	// visit URL
-	html, err := instance.Visit(url)
+	result, err := instance.Visit(url)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 
-	return html, nil
+	return result, nil
 }
