@@ -82,9 +82,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	index = bytes.Replace(index, []byte("<head>"), []byte("<head"+result.HeadAttributesString()+">"), 1)
 	index = bytes.Replace(index, []byte("<html>"), []byte("<html"+result.HTMLAttributesString()+">"), 1)
 
+	// wrap body with boundary tags
+	body := `<script type="x/boundary" id="fastboot-body-start"></script>` + result.BodyContent + `<script type="x/boundary" id="fastboot-body-end"></script>`
+
 	// replace content
 	index = bytes.Replace(index, []byte("<!-- EMBER_CLI_FASTBOOT_HEAD -->"), []byte(result.HeadContent), 1)
-	index = bytes.Replace(index, []byte("<!-- EMBER_CLI_FASTBOOT_BODY -->"), []byte(result.BodyContent), 1)
+	index = bytes.Replace(index, []byte("<!-- EMBER_CLI_FASTBOOT_BODY -->"), []byte(body), 1)
 
 	// write result
 	_, _ = w.Write(index)
