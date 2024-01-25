@@ -4,11 +4,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Install
-        uses: actions/setup-go@v2
+      - name: Setup Go
+        uses: actions/setup-go@v4
         with:
           go-version: 1.16.x
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'yarn'
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Yarn Install
+        working-directory: ./example
+        run: yarn install
+      - name: Build Example
+        working-directory: ./example
+        run: yarn build
       - name: Test
         run: go test ./...
