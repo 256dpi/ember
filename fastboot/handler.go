@@ -13,10 +13,12 @@ import (
 
 // Options are used to configure the handler.
 type Options struct {
-	App      *ember.App
-	BaseURL  string
-	Isolated bool
-	Reporter func(error)
+	App       *ember.App
+	BaseURL   string
+	Isolated  bool
+	OnRequest func(*Request)
+	OnResult  func(*Result)
+	OnError   func(error)
 }
 
 // Handler is a http.Handler that will pre-render the given ember app.
@@ -98,8 +100,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var err error
 		instance, err = Boot(h.options.App, h.options.BaseURL)
 		if err != nil {
-			if h.options.Reporter != nil {
-				h.options.Reporter(err)
+			if h.options.OnError != nil {
+				h.options.OnError(err)
 			}
 			_, _ = w.Write(index)
 			return
@@ -107,14 +109,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer instance.Close()
 	}
 
+	// call request handler
+	if h.options.OnRequest != nil {
+		h.options.OnRequest(&request)
+	}
+
 	// visit URL
 	result, err := instance.Visit(r.URL.String(), request)
 	if err != nil {
-		if h.options.Reporter != nil {
-			h.options.Reporter(err)
+		if h.options.OnError != nil {
+			h.options.OnError(err)
 		}
 		_, _ = w.Write(index)
 		return
+	}
+
+	// call result handler
+	if h.options.OnResult != nil {
+		h.options.OnResult(&result)
 	}
 
 	// apply attributes

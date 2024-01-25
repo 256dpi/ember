@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kr/pretty"
+
 	"github.com/256dpi/ember"
 	"github.com/256dpi/ember/fastboot"
 )
@@ -16,6 +18,7 @@ var render = flag.Bool("fastboot", false, "")
 var isolated = flag.Bool("isolated", false, "")
 var addr = flag.String("addr", ":8000", "")
 var baseURL = flag.String("base-url", "http://localhost:8000", "")
+var log = flag.Bool("log", false, "")
 
 func main() {
 	// parse flags
@@ -46,7 +49,17 @@ func main() {
 			App:      app,
 			BaseURL:  *baseURL,
 			Isolated: *isolated,
-			Reporter: func(err error) {
+			OnRequest: func(request *fastboot.Request) {
+				if *log {
+					pretty.Println("==> Request", request)
+				}
+			},
+			OnResult: func(result *fastboot.Result) {
+				if *log {
+					pretty.Println("==> Result", result)
+				}
+			},
+			OnError: func(err error) {
 				fmt.Println("==> Error: " + err.Error())
 			},
 		})
