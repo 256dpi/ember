@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/log"
@@ -104,6 +105,7 @@ type Instance struct {
 	ctx    context.Context
 	cancel func()
 	errs   []error
+	mutex  sync.Mutex
 }
 
 // Boot will boot the provided Fastboot-capable app in a headless browser and
@@ -246,6 +248,10 @@ func Boot(app *ember.App, baseURL string) (*Instance, error) {
 
 // Visit will visit the provided URL and return the result.
 func (i *Instance) Visit(relURL string, r Request) (Result, error) {
+	// acquire mutex
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
 	// prepare actions
 	var actions []chromedp.Action
 
@@ -262,6 +268,12 @@ func (i *Instance) Visit(relURL string, r Request) (Result, error) {
 	
 			if (window.$instance) {
 				await $instance.destroy();
+			}
+	
+			document.documentElement.innerHTML = '<head></head><body></body>';
+			while(document.documentElement.attributes.length > 0) {
+				const name = document.documentElement.attributes[0].name;
+				document.documentElement.removeAttribute(name);
 			}
 	
 			window.$instance = await $app.buildInstance();
@@ -330,6 +342,10 @@ func (i *Instance) Visit(relURL string, r Request) (Result, error) {
 
 // Close will close the instance and release all resources.
 func (i *Instance) Close() {
+	// acquire mutex
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
 	// cancel context
 	i.cancel()
 
