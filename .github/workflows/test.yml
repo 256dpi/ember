@@ -4,6 +4,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
@@ -14,8 +16,6 @@ jobs:
           node-version: '18.x'
           cache: 'yarn'
           cache-dependency-path: example/yarn.lock
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Yarn Install
         working-directory: example
         run: yarn install
