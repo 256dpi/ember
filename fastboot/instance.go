@@ -2,16 +2,24 @@ package fastboot
 
 import (
 	"context"
+	_ "embed" // for embedding
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
+	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 
 	"github.com/256dpi/ember"
 )
+
+//go:embed headers.js
+var headersClass string
 
 type manifest struct {
 	Fastboot struct {
@@ -23,6 +31,17 @@ type manifest struct {
 			VendorFiles []string `json:"vendorFiles"`
 		} `json:"manifest"`
 	} `json:"fastboot"`
+}
+
+// Request represents a request to be made.
+type Request struct {
+	Method      string              `json:"method"`
+	Protocol    string              `json:"protocol"`
+	Path        string              `json:"path"`
+	Headers     map[string][]string `json:"headers"`
+	Cookies     map[string]string   `json:"cookies"`
+	QueryParams map[string]string   `json:"queryParams"`
+	Body        string              `json:"body"`
 }
 
 // Result represents the result of an instance visit.
@@ -89,12 +108,21 @@ type Instance struct {
 
 // Boot will boot the provided Fastboot-capable app in a headless browser and
 // return a running instance.
-func Boot(app *ember.App) (*Instance, error) {
+func Boot(app *ember.App, baseURL string) (*Instance, error) {
+	// trim trailing slashes
+	baseURL = strings.TrimRight(baseURL, "/")
+
+	// get package.json file
+	packageJSON := app.File("package.json")
+	if packageJSON == nil {
+		return nil, errors.New("missing package.json")
+	}
+
 	// parse manifest
 	var manifest manifest
-	err := json.Unmarshal(app.File("package.json"), &manifest)
+	err := json.Unmarshal(packageJSON, &manifest)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse package.json: %w", err)
 	}
 
 	// create context
@@ -110,6 +138,26 @@ func Boot(app *ember.App) (*Instance, error) {
 
 	// collect errors
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		if ev, ok := ev.(*fetch.EventRequestPaused); ok {
+			go func() {
+				if ev.Request.URL == baseURL+"/" {
+					err := chromedp.Run(ctx,
+						fetch.FulfillRequest(ev.RequestID, 200).
+							WithBody(base64.StdEncoding.EncodeToString([]byte("<html><head></head><body></body></html>"))),
+					)
+					if err != nil {
+						instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", err.Error(), ev.Request.URL))
+					}
+				} else {
+					err := chromedp.Run(ctx,
+						fetch.ContinueRequest(ev.RequestID),
+					)
+					if err != nil {
+						instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", err.Error(), ev.Request.URL))
+					}
+				}
+			}()
+		}
 		if ev, ok := ev.(*log.EventEntryAdded); ok {
 			if ev.Entry.Level == log.LevelError {
 				instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", ev.Entry.Text, ev.Entry.URL))
@@ -120,8 +168,11 @@ func Boot(app *ember.App) (*Instance, error) {
 	// prepare actions
 	var actions []chromedp.Action
 
+	// enable fetch interception
+	actions = append(actions, fetch.Enable())
+
 	// open blank page
-	actions = append(actions, chromedp.Navigate("about:blank"))
+	actions = append(actions, chromedp.Navigate(baseURL))
 
 	// prepare environment
 	actions = append(actions, chromedp.Evaluate(`
@@ -184,40 +235,45 @@ func Boot(app *ember.App) (*Instance, error) {
 		return params
 	}))
 
-	// prepare application
+	// boot application
 	err = chromedp.Run(instance.ctx, actions...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to boot application: %w", err)
 	}
 
 	return instance, nil
 }
 
 // Visit will visit the provided URL and return the result.
-func (i *Instance) Visit(url string) (Result, error) {
+func (i *Instance) Visit(relURL string, r Request) (Result, error) {
 	// prepare actions
 	var actions []chromedp.Action
+
+	// marshal request
+	data, err := json.Marshal(r)
+	if err != nil {
+		return Result{}, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	// run application
 	actions = append(actions, chromedp.Evaluate(`
 		(async () => {
+			`+headersClass+`
+	
 			if (window.$instance) {
 				await $instance.destroy();
 			}
 	
 			window.$instance = await $app.buildInstance();
 	
+			const request = `+string(data)+`;
+			request.headers = new FastBootHeaders(request.headers);
+			request.host = () => request.headers.get('host');
+	
 			const info = {
-				request: {
-					method: 'GET',
-					path: '`+url+`',
-					headers: {},
-					cookies: {},
-					queryParams: {},
-					body: null,
-				},
+				request: request,
 				response: {
-					headers: {},
+					headers: new FastBootHeaders({}),
 					statusCode: 200,
 				},
 				metadata: {},
@@ -236,7 +292,7 @@ func (i *Instance) Visit(url string) (Result, error) {
 			};
 	
 			await $instance.boot(options);
-			await $instance.visit('`+url+`', options);
+			await $instance.visit('`+relURL+`', options);
 			await info.deferredPromise;
 	
 			return info;
@@ -256,17 +312,17 @@ func (i *Instance) Visit(url string) (Result, error) {
 		bodyAttributes: Object.fromEntries(Array.from(document.body.attributes).map(a => [a.name, a.value])),
 	})`, &result))
 
-	// render application
-	err := chromedp.Run(i.ctx, actions...)
+	// run application
+	err = chromedp.Run(i.ctx, actions...)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
 	}
 
 	// handle errors
 	if len(i.errs) > 0 {
 		err = errors.Join(i.errs...)
 		i.errs = nil
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
 	}
 
 	return result, nil
@@ -284,16 +340,31 @@ func (i *Instance) Close() {
 
 // Render will run the provided app in a headless browser and return the HTML
 // output for the specified URL.
-func Render(app *ember.App, url string) (Result, error) {
+func Render(app *ember.App, absURL string, r Request) (Result, error) {
+	// parse URL
+	_url, err := url.Parse(absURL)
+	if err != nil {
+		return Result{}, err
+	}
+
+	// determine base URL
+	baseURL := fmt.Sprintf("%s://%s", _url.Scheme, _url.Host)
+
+	// determine relative URL
+	_url.Scheme = ""
+	_url.Opaque = ""
+	_url.Host = ""
+	relURL := _url.String()
+
 	// boot app
-	instance, err := Boot(app)
+	instance, err := Boot(app, baseURL)
 	if err != nil {
 		return Result{}, err
 	}
 	defer instance.Close()
 
 	// visit URL
-	result, err := instance.Visit(url)
+	result, err := instance.Visit(relURL, r)
 	if err != nil {
 		return Result{}, err
 	}

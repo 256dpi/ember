@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 var name = flag.String("name", "example", "")
 var render = flag.Bool("fastboot", false, "")
 var addr = flag.String("addr", ":8000", "")
+var baseURL = flag.String("base-url", "http://localhost:8000", "")
 
 func main() {
 	// parse flags
@@ -39,7 +41,9 @@ func main() {
 
 	// handle fastboot
 	if *render {
-		handler, err = fastboot.Handle(app)
+		handler, err = fastboot.Handle(app, *baseURL, func(err error) {
+			fmt.Println("==> Error: " + err.Error())
+		})
 		if err != nil {
 			panic(err)
 		}

@@ -15,12 +15,13 @@ import (
 type Handler struct {
 	app      *ember.App
 	instance *Instance
+	reporter func(error)
 }
 
 // Handle will create a new handler.
-func Handle(app *ember.App) (http.Handler, error) {
+func Handle(app *ember.App, baseURL string, reporter func(error)) (http.Handler, error) {
 	// create instance
-	instance, err := Boot(app)
+	instance, err := Boot(app, baseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -28,6 +29,7 @@ func Handle(app *ember.App) (http.Handler, error) {
 	return &Handler{
 		app:      app,
 		instance: instance,
+		reporter: reporter,
 	}, nil
 }
 
@@ -57,6 +59,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	/* render requests */
 
+	// build request
+	request := Request{
+		Method:      "GET",
+		Protocol:    r.URL.Scheme,
+		Path:        r.URL.Path,
+		Headers:     r.Header,
+		Cookies:     map[string]string{}, // TODO: Set.
+		QueryParams: map[string]string{}, // TODO: Set.
+		Body:        "",
+	}
+
 	// clear URL prefix
 	r.URL.Scheme = ""
 	r.URL.Opaque = ""
@@ -70,9 +83,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	// visit URL
-	result, err := h.instance.Visit(r.URL.String())
+	result, err := h.instance.Visit(r.URL.String(), request)
 	if err != nil {
-		// TODO: Log error.
+		if h.reporter != nil {
+			h.reporter(err)
+		}
 		_, _ = w.Write(index)
 		return
 	}
