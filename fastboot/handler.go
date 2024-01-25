@@ -11,25 +11,35 @@ import (
 	"github.com/256dpi/ember"
 )
 
+// Options are used to configure the handler.
+type Options struct {
+	App      *ember.App
+	BaseURL  string
+	Isolated bool
+	Reporter func(error)
+}
+
 // Handler is a http.Handler that will pre-render the given ember app.
 type Handler struct {
-	app      *ember.App
+	options  Options
 	instance *Instance
-	reporter func(error)
 }
 
 // Handle will create a new handler.
-func Handle(app *ember.App, baseURL string, reporter func(error)) (http.Handler, error) {
+func Handle(options Options) (*Handler, error) {
 	// create instance
-	instance, err := Boot(app, baseURL)
-	if err != nil {
-		return nil, err
+	var instance *Instance
+	if !options.Isolated {
+		var err error
+		instance, err = Boot(options.App, options.BaseURL)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Handler{
-		app:      app,
+		options:  options,
 		instance: instance,
-		reporter: reporter,
 	}, nil
 }
 
@@ -45,7 +55,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pth := strings.Trim(r.URL.Path, "/")
 
 	// handle exact matches
-	file := h.app.File(pth)
+	file := h.options.App.File(pth)
 	if file != nil {
 		// set content type
 		mimeType := serve.MimeTypeByExtension(path.Ext(pth), true)
@@ -77,16 +87,31 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.URL.User = nil
 
 	// prepare index
-	index := h.app.File("index.html")
+	index := h.options.App.File("index.html")
 
 	// set content type
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
+	// prepare instance
+	instance := h.instance
+	if instance == nil {
+		var err error
+		instance, err = Boot(h.options.App, h.options.BaseURL)
+		if err != nil {
+			if h.options.Reporter != nil {
+				h.options.Reporter(err)
+			}
+			_, _ = w.Write(index)
+			return
+		}
+		defer instance.Close()
+	}
+
 	// visit URL
-	result, err := h.instance.Visit(r.URL.String(), request)
+	result, err := instance.Visit(r.URL.String(), request)
 	if err != nil {
-		if h.reporter != nil {
-			h.reporter(err)
+		if h.options.Reporter != nil {
+			h.options.Reporter(err)
 		}
 		_, _ = w.Write(index)
 		return
@@ -106,4 +131,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// write result
 	_, _ = w.Write(index)
+}
+
+// Close will close the handler.
+func (h *Handler) Close() {
+	if h.instance != nil {
+		h.instance.Close()
+	}
 }

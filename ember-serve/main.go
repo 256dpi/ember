@@ -13,6 +13,7 @@ import (
 
 var name = flag.String("name", "example", "")
 var render = flag.Bool("fastboot", false, "")
+var isolated = flag.Bool("isolated", false, "")
 var addr = flag.String("addr", ":8000", "")
 var baseURL = flag.String("base-url", "http://localhost:8000", "")
 
@@ -41,8 +42,13 @@ func main() {
 
 	// handle fastboot
 	if *render {
-		handler, err = fastboot.Handle(app, *baseURL, func(err error) {
-			fmt.Println("==> Error: " + err.Error())
+		handler, err = fastboot.Handle(fastboot.Options{
+			App:      app,
+			BaseURL:  *baseURL,
+			Isolated: *isolated,
+			Reporter: func(err error) {
+				fmt.Println("==> Error: " + err.Error())
+			},
 		})
 		if err != nil {
 			panic(err)
