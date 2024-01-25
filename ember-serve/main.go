@@ -39,7 +39,6 @@ func main() {
 
 	// handle fastboot
 	if *render {
-		println("using fastboot")
 		handler, err = fastboot.Handle(app)
 		if err != nil {
 			panic(err)
