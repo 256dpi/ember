@@ -13,14 +13,14 @@ jobs:
         with:
           node-version: '18.x'
           cache: 'yarn'
-          cache-dependency-path: ./example/yarn.lock
+          cache-dependency-path: example/yarn.lock
       - name: Checkout
         uses: actions/checkout@v2
       - name: Yarn Install
-        working-directory: ./example
+        working-directory: example
         run: yarn install
       - name: Build Example
-        working-directory: ./example
+        working-directory: example
         run: yarn build
       - name: Test
         run: go test ./...
