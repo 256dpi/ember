@@ -14,7 +14,7 @@ import (
 // Options are used to configure the handler.
 type Options struct {
 	App       *ember.App
-	BaseURL   string
+	Origin    string
 	Isolated  bool
 	Headed    bool
 	OnRequest func(*Request)
@@ -34,7 +34,7 @@ func Handle(options Options) (*Handler, error) {
 	var instance *Instance
 	if !options.Isolated {
 		var err error
-		instance, err = Boot(options.App, options.BaseURL, options.Headed)
+		instance, err = Boot(options.App, options.Origin, options.Headed)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +99,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	instance := h.instance
 	if instance == nil {
 		var err error
-		instance, err = Boot(h.options.App, h.options.BaseURL, h.options.Headed)
+		instance, err = Boot(h.options.App, h.options.Origin, h.options.Headed)
 		if err != nil {
 			if h.options.OnError != nil {
 				h.options.OnError(err)

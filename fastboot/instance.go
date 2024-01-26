@@ -110,9 +110,9 @@ type Instance struct {
 
 // Boot will boot the provided Fastboot-capable app in a headless browser and
 // return a running instance.
-func Boot(app *ember.App, baseURL string, headed bool) (*Instance, error) {
+func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 	// trim trailing slashes
-	baseURL = strings.TrimRight(baseURL, "/")
+	origin = strings.TrimRight(origin, "/")
 
 	// get package.json file
 	packageJSON := app.File("package.json")
@@ -154,7 +154,7 @@ func Boot(app *ember.App, baseURL string, headed bool) (*Instance, error) {
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		if ev, ok := ev.(*fetch.EventRequestPaused); ok {
 			go func() {
-				if ev.Request.URL == baseURL+"/" {
+				if strings.TrimRight(ev.Request.URL, "/") == origin {
 					err := chromedp.Run(ctx,
 						fetch.FulfillRequest(ev.RequestID, 200).
 							WithBody(base64.StdEncoding.EncodeToString([]byte("<html><head></head><body></body></html>"))),
@@ -185,8 +185,8 @@ func Boot(app *ember.App, baseURL string, headed bool) (*Instance, error) {
 	// enable fetch interception
 	actions = append(actions, fetch.Enable())
 
-	// open blank page
-	actions = append(actions, chromedp.Navigate(baseURL))
+	// open origin (gets intercepted)
+	actions = append(actions, chromedp.Navigate(origin))
 
 	// prepare environment
 	actions = append(actions, chromedp.Evaluate(`
@@ -259,7 +259,7 @@ func Boot(app *ember.App, baseURL string, headed bool) (*Instance, error) {
 }
 
 // Visit will visit the provided URL and return the result.
-func (i *Instance) Visit(relURL string, r Request) (Result, error) {
+func (i *Instance) Visit(url string, r Request) (Result, error) {
 	// acquire mutex
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
@@ -323,7 +323,7 @@ func (i *Instance) Visit(relURL string, r Request) (Result, error) {
 			};
 	
 			await $instance.boot(options);
-			await $instance.visit('`+relURL+`', options);
+			await $instance.visit('`+url+`', options);
 			await info.deferredPromise;
 	
 			return info;
@@ -375,31 +375,31 @@ func (i *Instance) Close() {
 
 // Render will run the provided app in a headless browser and return the HTML
 // output for the specified URL.
-func Render(app *ember.App, absURL string, r Request) (Result, error) {
+func Render(app *ember.App, location string, r Request) (Result, error) {
 	// parse URL
-	_url, err := url.Parse(absURL)
+	urlData, err := url.Parse(location)
 	if err != nil {
 		return Result{}, err
 	}
 
-	// determine base URL
-	baseURL := fmt.Sprintf("%s://%s", _url.Scheme, _url.Host)
+	// determine origin
+	origin := fmt.Sprintf("%s://%s", urlData.Scheme, urlData.Host)
 
-	// determine relative URL
-	_url.Scheme = ""
-	_url.Opaque = ""
-	_url.Host = ""
-	relURL := _url.String()
+	// determine visit URL
+	urlData.Scheme = ""
+	urlData.Opaque = ""
+	urlData.Host = ""
+	visitURL := urlData.String()
 
 	// boot app
-	instance, err := Boot(app, baseURL, false)
+	instance, err := Boot(app, origin, false)
 	if err != nil {
 		return Result{}, err
 	}
 	defer instance.Close()
 
 	// visit URL
-	result, err := instance.Visit(relURL, r)
+	result, err := instance.Visit(visitURL, r)
 	if err != nil {
 		return Result{}, err
 	}

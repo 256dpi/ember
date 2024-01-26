@@ -13,8 +13,8 @@ func TestHandler(t *testing.T) {
 	app := example.App()
 
 	handler, err := Handle(Options{
-		App:     app,
-		BaseURL: "https://example.org",
+		App:    app,
+		Origin: "https://example.org",
 		OnError: func(err error) {
 			assert.NoError(t, err)
 		},
@@ -45,7 +45,7 @@ func TestHandlerIsolated(t *testing.T) {
 
 	handler, err := Handle(Options{
 		App:      app,
-		BaseURL:  "https://example.org",
+		Origin:   "https://example.org",
 		Isolated: true,
 		OnError: func(err error) {
 			assert.NoError(t, err)

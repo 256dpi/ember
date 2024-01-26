@@ -48,7 +48,7 @@ func main() {
 	if *render {
 		handler, err = fastboot.Handle(fastboot.Options{
 			App:      app,
-			BaseURL:  *baseURL,
+			Origin:   *baseURL,
 			Isolated: *isolated,
 			Headed:   *headed,
 			OnRequest: func(request *fastboot.Request) {
