@@ -270,11 +270,17 @@ func (i *Instance) Visit(relURL string, r Request) (Result, error) {
 				await $instance.destroy();
 			}
 	
-			document.documentElement.innerHTML = '<head></head><body></body>';
-			while(document.documentElement.attributes.length > 0) {
-				const name = document.documentElement.attributes[0].name;
-				document.documentElement.removeAttribute(name);
+			let removeAttributes = (node) => {
+				while(node.attributes.length > 0) {
+					node.removeAttribute(node.attributes[0].name);
+				}
 			}
+	
+			document.head.innerHTML = '';
+			document.body.innerHTML = '';
+			removeAttributes(document.head);
+			removeAttributes(document.body);
+			removeAttributes(document.documentElement);
 	
 			window.$instance = await $app.buildInstance();
 	
@@ -299,7 +305,8 @@ func (i *Instance) Visit(relURL string, r Request) (Result, error) {
 	
 			const options = {
 				document: window.document,
-				isBrowser: false,
+				isBrowser: true,
+				isInteractive: false,
 				rootElement: window.document.body,
 			};
 	
