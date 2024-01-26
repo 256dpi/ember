@@ -16,6 +16,7 @@ type Options struct {
 	App       *ember.App
 	BaseURL   string
 	Isolated  bool
+	Headed    bool
 	OnRequest func(*Request)
 	OnResult  func(*Result)
 	OnError   func(error)
@@ -33,7 +34,7 @@ func Handle(options Options) (*Handler, error) {
 	var instance *Instance
 	if !options.Isolated {
 		var err error
-		instance, err = Boot(options.App, options.BaseURL)
+		instance, err = Boot(options.App, options.BaseURL, options.Headed)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +99,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	instance := h.instance
 	if instance == nil {
 		var err error
-		instance, err = Boot(h.options.App, h.options.BaseURL)
+		instance, err = Boot(h.options.App, h.options.BaseURL, h.options.Headed)
 		if err != nil {
 			if h.options.OnError != nil {
 				h.options.OnError(err)

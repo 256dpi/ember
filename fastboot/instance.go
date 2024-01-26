@@ -110,7 +110,7 @@ type Instance struct {
 
 // Boot will boot the provided Fastboot-capable app in a headless browser and
 // return a running instance.
-func Boot(app *ember.App, baseURL string) (*Instance, error) {
+func Boot(app *ember.App, baseURL string, headed bool) (*Instance, error) {
 	// trim trailing slashes
 	baseURL = strings.TrimRight(baseURL, "/")
 
@@ -127,15 +127,27 @@ func Boot(app *ember.App, baseURL string) (*Instance, error) {
 		return nil, fmt.Errorf("failed to parse package.json: %w", err)
 	}
 
+	// prepare allocator options
+	options := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
+	if headed {
+		options = append(options, chromedp.Flag("headless", false))
+	}
+
+	// create allocator
+	ctx, cancel1 := chromedp.NewExecAllocator(context.Background(), options...)
+
 	// create context
-	ctx, cancel := chromedp.NewContext(context.Background())
+	ctx, cancel2 := chromedp.NewContext(ctx)
 
 	// prepare instance
 	instance := &Instance{
-		app:    app,
-		man:    manifest,
-		ctx:    ctx,
-		cancel: cancel,
+		app: app,
+		man: manifest,
+		ctx: ctx,
+		cancel: func() {
+			cancel2()
+			cancel1()
+		},
 	}
 
 	// collect errors
@@ -380,7 +392,7 @@ func Render(app *ember.App, absURL string, r Request) (Result, error) {
 	relURL := _url.String()
 
 	// boot app
-	instance, err := Boot(app, baseURL)
+	instance, err := Boot(app, baseURL, false)
 	if err != nil {
 		return Result{}, err
 	}

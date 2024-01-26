@@ -18,6 +18,7 @@ var render = flag.Bool("fastboot", false, "")
 var isolated = flag.Bool("isolated", false, "")
 var addr = flag.String("addr", ":8000", "")
 var baseURL = flag.String("base-url", "http://localhost:8000", "")
+var headed = flag.Bool("headed", false, "")
 var log = flag.Bool("log", false, "")
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 			App:      app,
 			BaseURL:  *baseURL,
 			Isolated: *isolated,
+			Headed:   *headed,
 			OnRequest: func(request *fastboot.Request) {
 				if *log {
 					pretty.Println("==> Request", request)

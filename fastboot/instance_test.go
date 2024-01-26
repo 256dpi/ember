@@ -122,7 +122,7 @@ func TestRenderDebug(t *testing.T) {
 func TestInstance(t *testing.T) {
 	app := example.App()
 
-	instance, err := Boot(app, "https://example.org")
+	instance, err := Boot(app, "https://example.org", false)
 	assert.NoError(t, err)
 	defer instance.Close()
 
@@ -145,7 +145,7 @@ func TestInstance(t *testing.T) {
 func BenchmarkInstance(b *testing.B) {
 	app := example.App()
 
-	instance, err := Boot(app, "https://example.org")
+	instance, err := Boot(app, "https://example.org", false)
 	assert.NoError(b, err)
 	defer instance.Close()
 
