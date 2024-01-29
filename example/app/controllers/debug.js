@@ -4,7 +4,7 @@ import { service } from '@ember/service';
 export default class extends Controller {
   @service fastboot;
 
-  // TODO: Add shoebox?
+  // TODO: Add shoebox support?
 
   get debug() {
     return JSON.stringify({

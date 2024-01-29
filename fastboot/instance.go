@@ -89,10 +89,6 @@ func (r *Result) HTML() string {
 	)
 }
 
-// TODO: Cache browser instance?
-// TODO: Cache responses?
-// TODO: Support for different manifests schemas?
-
 // Instance represents a running Fastboot instance.
 type Instance struct {
 	app    *ember.App
