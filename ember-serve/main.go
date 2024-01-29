@@ -13,14 +13,14 @@ import (
 	"github.com/256dpi/ember/fastboot"
 )
 
-var name = flag.String("name", "example", "")
-var render = flag.Bool("fastboot", false, "")
-var cache = flag.Duration("cache", 0, "")
-var isolated = flag.Bool("isolated", false, "")
-var addr = flag.String("addr", ":8000", "")
-var baseURL = flag.String("base-url", "http://localhost:8000", "")
-var headed = flag.Bool("headed", false, "")
-var log = flag.Bool("log", false, "")
+var name = flag.String("name", "example", "The Ember.js application name.")
+var render = flag.Bool("fastboot", false, "Whether to render the application using FastBoot.")
+var cache = flag.Duration("cache", 0, "The duration for which to cache rendered pages.")
+var isolated = flag.Bool("isolated", false, "Whether to boot the application per request.")
+var origin = flag.String("origin", "http://localhost:8000", "The origin of the application.")
+var addr = flag.String("addr", ":8000", "The address to listen on.")
+var headed = flag.Bool("headed", false, "Whether to run in headed mode (visible Chrome window).")
+var log = flag.Bool("log", false, "Whether to log requests and results.")
 
 func main() {
 	// parse flags
@@ -49,22 +49,22 @@ func main() {
 	if *render {
 		handler, err = fastboot.Handle(fastboot.Options{
 			App:      app,
-			Origin:   *baseURL,
+			Origin:   *origin,
 			Cache:    *cache,
 			Isolated: *isolated,
 			Headed:   *headed,
 			OnRequest: func(request *fastboot.Request) {
 				if *log {
-					pretty.Println("==> Request", request)
+					_, _ = pretty.Println("==> Request", request)
 				}
 			},
 			OnResult: func(result *fastboot.Result) {
 				if *log {
-					pretty.Println("==> Result", result)
+					_, _ = pretty.Println("==> Result", result)
 				}
 			},
 			OnError: func(err error) {
-				fmt.Println("==> Error: " + err.Error())
+				_, _ = fmt.Println("==> Error: " + err.Error())
 			},
 		})
 		if err != nil {
