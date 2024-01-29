@@ -24,11 +24,8 @@ var headersClass string
 
 type manifest struct {
 	Fastboot struct {
-		AppName  string          `json:"appName"`
-		Config   json.RawMessage `json:"config"`
 		Manifest struct {
 			AppFiles    []string `json:"appFiles"`
-			HTMLFile    string   `json:"htmlFile"`
 			VendorFiles []string `json:"vendorFiles"`
 		} `json:"manifest"`
 	} `json:"fastboot"`
@@ -144,6 +141,20 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 		},
 	}
 
+	// clone app
+	app = app.Clone()
+
+	// disable autoboot
+	settings := app.Get("APP").(map[string]interface{})
+	settings["autoboot"] = false
+	app.Set("APP", settings)
+
+	// marshal config
+	config, err := json.Marshal(app.Config())
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
+	}
+
 	// collect errors
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		if ev, ok := ev.(*fetch.EventRequestPaused); ok {
@@ -184,7 +195,9 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 
 	// prepare environment
 	actions = append(actions, chromedp.Evaluate(`
-		const config = `+string(instance.man.Fastboot.Config)+`;
+		const config = {
+			'`+app.Name()+`': `+string(config)+`
+		};
 
 		window.FastBoot = {
 			config(name) {
