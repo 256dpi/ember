@@ -74,12 +74,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// build request
 	request := Request{
-		Method:      "GET",
-		Protocol:    r.URL.Scheme,
-		Path:        r.URL.Path,
-		Headers:     r.Header,
-		Cookies:     map[string]string{}, // TODO: Set.
-		QueryParams: map[string]string{}, // TODO: Set.
+		Method:   "GET",
+		Protocol: r.URL.Scheme,
+		Path:     r.URL.Path,
+		Headers: map[string][]string{
+			"Host": {r.Host},
+		},
+		Cookies:     map[string]string{},
+		QueryParams: map[string]string{},
 		Body:        "",
 	}
 
