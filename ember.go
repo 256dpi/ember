@@ -291,6 +291,7 @@ func (a *App) Handler(configure func(*App, *http.Request)) http.Handler {
 // Clone will make a copy of the application.
 func (a *App) Clone() *App {
 	return &App{
+		name:   a.name,
 		parent: a,
 		index:  a.index,
 	}
