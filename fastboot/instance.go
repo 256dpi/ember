@@ -89,11 +89,6 @@ func (r *Result) HTML() string {
 	)
 }
 
-// TODO: Should we disable image downloads and CSS stuff?
-//  => chromedp.Flag("blink-settings", "imagesEnabled=false")
-
-// TODO: Use github.com/tidwall/go-node as a faster alternative to chromedp?
-
 // TODO: Cache browser instance?
 // TODO: Cache responses?
 // TODO: Support for different manifests schemas?
@@ -132,6 +127,9 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 	if headed {
 		options = append(options, chromedp.Flag("headless", false))
 	}
+
+	// disable image loading
+	options = append(options, chromedp.Flag("blink-settings", "imagesEnabled=false"))
 
 	// create allocator
 	ctx, cancel1 := chromedp.NewExecAllocator(context.Background(), options...)
