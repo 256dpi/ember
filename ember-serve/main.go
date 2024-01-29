@@ -15,6 +15,7 @@ import (
 
 var name = flag.String("name", "example", "")
 var render = flag.Bool("fastboot", false, "")
+var cache = flag.Duration("cache", 0, "")
 var isolated = flag.Bool("isolated", false, "")
 var addr = flag.String("addr", ":8000", "")
 var baseURL = flag.String("base-url", "http://localhost:8000", "")
@@ -49,6 +50,7 @@ func main() {
 		handler, err = fastboot.Handle(fastboot.Options{
 			App:      app,
 			Origin:   *baseURL,
+			Cache:    *cache,
 			Isolated: *isolated,
 			Headed:   *headed,
 			OnRequest: func(request *fastboot.Request) {

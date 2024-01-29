@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/256dpi/serve"
+	"github.com/patrickmn/go-cache"
 
 	"github.com/256dpi/ember"
 )
@@ -15,6 +17,7 @@ import (
 type Options struct {
 	App       *ember.App
 	Origin    string
+	Cache     time.Duration
 	Isolated  bool
 	Headed    bool
 	OnRequest func(*Request)
@@ -25,11 +28,18 @@ type Options struct {
 // Handler is a http.Handler that will pre-render the given ember app.
 type Handler struct {
 	options  Options
+	cache    *cache.Cache
 	instance *Instance
 }
 
 // Handle will create a new handler.
 func Handle(options Options) (*Handler, error) {
+	// prepare cache
+	var cacher *cache.Cache
+	if options.Cache == 0 {
+		cacher = cache.New(options.Cache, options.Cache/4)
+	}
+
 	// create instance
 	var instance *Instance
 	if !options.Isolated {
@@ -42,6 +52,7 @@ func Handle(options Options) (*Handler, error) {
 
 	return &Handler{
 		options:  options,
+		cache:    cacher,
 		instance: instance,
 	}, nil
 }
@@ -71,6 +82,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/* render requests */
+
+	// use cached result if possible
+	if h.cache != nil {
+		cached, ok := h.cache.Get(pth)
+		if ok {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write(cached.([]byte))
+			return
+		}
+	}
 
 	// build request
 	request := Request{
@@ -147,6 +168,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// write result
 	_, _ = w.Write(index)
+
+	// cache result if possible
+	if h.cache != nil {
+		h.cache.Set(pth, index, h.options.Cache)
+	}
 }
 
 // Close will close the handler.
