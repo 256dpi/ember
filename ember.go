@@ -99,6 +99,11 @@ func (a *App) Name() string {
 	return a.name
 }
 
+// Config will return the configuration of the application.
+func (a *App) Config() map[string]interface{} {
+	return a.getConfig()
+}
+
 // Get will get the specified setting from the application.
 func (a *App) Get(name string) interface{} {
 	return a.getConfig()[name]
