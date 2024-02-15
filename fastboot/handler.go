@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/256dpi/serve"
-	"github.com/patrickmn/go-cache"
+	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/256dpi/ember"
 )
@@ -28,16 +28,16 @@ type Options struct {
 // Handler is a http.Handler that will pre-render the given ember app.
 type Handler struct {
 	options  Options
-	cache    *cache.Cache
+	cache    *gocache.Cache
 	instance *Instance
 }
 
 // Handle will create a new handler.
 func Handle(options Options) (*Handler, error) {
 	// prepare cache
-	var cacher *cache.Cache
+	var cache *gocache.Cache
 	if options.Cache == 0 {
-		cacher = cache.New(options.Cache, options.Cache/4)
+		cache = gocache.New(options.Cache, options.Cache/4)
 	}
 
 	// create instance
@@ -52,7 +52,7 @@ func Handle(options Options) (*Handler, error) {
 
 	return &Handler{
 		options:  options,
-		cache:    cacher,
+		cache:    cache,
 		instance: instance,
 	}, nil
 }
