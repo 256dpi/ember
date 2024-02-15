@@ -83,12 +83,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	/* render requests */
 
-	// use cached result if possible
+	// serve cached result if possible
 	if h.cache != nil {
 		cached, ok := h.cache.Get(pth)
 		if ok {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write(cached.([]byte))
+			http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(cached.([]byte)))
 			return
 		}
 	}
@@ -127,7 +127,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if h.options.OnError != nil {
 				h.options.OnError(err)
 			}
-			_, _ = w.Write(index)
+			http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(index))
 			return
 		}
 		defer instance.Close()
@@ -144,7 +144,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if h.options.OnError != nil {
 			h.options.OnError(err)
 		}
-		_, _ = w.Write(index)
+		http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(index))
 		return
 	}
 
@@ -167,7 +167,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	index = bytes.Replace(index, []byte("<!-- EMBER_CLI_FASTBOOT_BODY -->"), []byte(body), 1)
 
 	// write result
-	_, _ = w.Write(index)
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(index))
 
 	// cache result if possible
 	if h.cache != nil {
