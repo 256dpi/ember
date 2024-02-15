@@ -3,11 +3,9 @@ package fastboot
 import (
 	"bytes"
 	"net/http"
-	"path"
 	"strings"
 	"time"
 
-	"github.com/256dpi/serve"
 	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/256dpi/ember"
@@ -68,26 +66,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// remove leading and trailing slash
 	pth := strings.Trim(r.URL.Path, "/")
 
-	// handle exact matches
-	file := h.options.App.File(pth)
-	if file != nil {
-		// set content type
-		mimeType := serve.MimeTypeByExtension(path.Ext(pth), true)
-		w.Header().Set("Content-Type", mimeType)
-
-		// write file
-		_, _ = w.Write(file)
-
+	// handle static files
+	if h.options.App.File(pth) != nil {
+		h.options.App.ServeHTTP(w, r)
 		return
 	}
 
 	/* render requests */
 
+	// set content type
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 	// serve cached result if possible
 	if h.cache != nil {
 		cached, ok := h.cache.Get(pth)
 		if ok {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(cached.([]byte)))
 			return
 		}
@@ -114,9 +107,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// prepare index
 	index := h.options.App.File("index.html")
-
-	// set content type
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	// prepare instance
 	instance := h.instance
