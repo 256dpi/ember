@@ -13,6 +13,8 @@ func TestApp(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	assert.Equal(t, "app", app.Name())
+	assert.NotEmpty(t, app.Config())
 	assert.Equal(t, nil, app.Get("foo"))
 
 	app.Set("foo", map[string]interface{}{
@@ -26,8 +28,11 @@ func TestApp(t *testing.T) {
 	}, app.Get("foo"))
 
 	app.AddFile("foo.html", "Hello World!")
+	assert.Equal(t, "Hello World!", string(app.File("foo.html")))
+
 	app.AddInlineStyle("body { background: red; }")
 	app.AddInlineScript(`alert("Hello World!);"`)
+	app.PrependHead(`<meta charset="foo" content="bar" />`)
 
 	assert.False(t, app.IsAsset(""))
 	assert.False(t, app.IsAsset("foo"))
@@ -45,6 +50,7 @@ func TestApp(t *testing.T) {
 	assert.Equal(t, unIndent(`<!DOCTYPE html>
 		<html>
 			<head>
+				<meta charset="foo" content="bar" />
 				<meta charset="utf-8"/>
 				<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 				<title>App</title>
@@ -71,6 +77,7 @@ func TestApp(t *testing.T) {
 	assert.Equal(t, unIndent(`<!DOCTYPE html>
 		<html>
 			<head>
+				<meta charset="foo" content="bar" />
 				<meta charset="utf-8"/>
 				<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 				<title>App</title>
