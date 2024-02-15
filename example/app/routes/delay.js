@@ -1,11 +1,15 @@
 import Route from '@ember/routing/route';
 
 export default class extends Route {
-  model() {
+  queryParams = {
+    timeout: {}
+  };
+
+  model(params) {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({ message: 'Hello world!' });
-      }, 500);
+      }, parseInt(params.timeout) || 1000);
     });
   }
 }

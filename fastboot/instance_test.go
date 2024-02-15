@@ -18,7 +18,7 @@ func TestRender(t *testing.T) {
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Is FastBoot: true</p>")
 
-	result, err = Render(app, "https://example.org/delay", Request{Path: "/delay"})
+	result, err = Render(app, "https://example.org/delay?timeout=500", Request{Path: "/delay"})
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
@@ -131,7 +131,7 @@ func TestInstance(t *testing.T) {
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Is FastBoot: true</p>")
 
-	result, err = instance.Visit("/delay", Request{Path: "/delay"})
+	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"})
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
