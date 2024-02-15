@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/256dpi/serve"
 )
@@ -20,11 +21,12 @@ var bodyClosingTag = []byte("</body>")
 
 // App is an in-memory representation of an Ember.js application.
 type App struct {
-	name   string
-	parent *App
-	files  map[string][]byte
-	index  [3][]byte
-	config map[string]interface{}
+	name     string
+	parent   *App
+	files    map[string][]byte
+	index    [3][]byte
+	config   map[string]interface{}
+	modified time.Time
 }
 
 // MustCreate will call Create and panic on errors.
@@ -87,10 +89,11 @@ func Create(name string, files map[string]string) (*App, error) {
 	}
 
 	return &App{
-		name:   name,
-		files:  bytesFiles,
-		index:  [3][]byte{head, meta, tail},
-		config: config,
+		name:     name,
+		files:    bytesFiles,
+		index:    [3][]byte{head, meta, tail},
+		config:   config,
+		modified: time.Now(),
 	}, nil
 }
 
@@ -168,7 +171,7 @@ func (a *App) AppendBody(tag string) {
 }
 
 // Prefix will change the root URL and prefix all assets paths with the
-// specified prefix. The app must be serve with http.StripPrefix() to work
+// specified prefix. The app must be served with http.StripPrefix() to work
 // correctly.
 func (a *App) Prefix(prefix string) {
 	// ensure prefix
@@ -217,6 +220,9 @@ func (a *App) recompile() {
 
 	// update index
 	a.files[indexHTMLFile] = buffer
+
+	// update modified
+	a.modified = time.Now()
 }
 
 // AddFile will add the specified file to the app.
@@ -226,6 +232,9 @@ func (a *App) AddFile(name string, contents string) {
 
 	// set file
 	a.files[name] = []byte(contents)
+
+	// update modified
+	a.modified = time.Now()
 }
 
 // IsPage will return whether the provided path matches a page.
@@ -263,14 +272,12 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		content, _ = a.getFiles()[pth]
 	}
 
-	// get mime type
-	mimeType := serve.MimeTypeByExtension(path.Ext(pth), true)
-
 	// set content type
+	mimeType := serve.MimeTypeByExtension(path.Ext(pth), true)
 	w.Header().Set("Content-Type", mimeType)
 
-	// write file
-	_, _ = w.Write(content)
+	// serve file
+	http.ServeContent(w, r, pth, a.modified, bytes.NewReader(content))
 }
 
 // Handler will construct and return a dynamic handler that invokes the provided

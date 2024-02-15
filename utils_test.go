@@ -1,7 +1,7 @@
 package ember
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 )
@@ -12,7 +12,7 @@ func unIndent(str string) string {
 	return unIndentPattern.ReplaceAllString(str, "\n")
 }
 
-func fetch(url string) (string, string) {
+func fetch(url string) (string, string, string) {
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -22,10 +22,10 @@ func fetch(url string) (string, string) {
 	defer res.Body.Close()
 
 	// read body
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
 	}
 
-	return string(data), res.Header.Get("Content-Type")
+	return string(data), res.Header.Get("Content-Type"), res.Header.Get("Content-Length")
 }
