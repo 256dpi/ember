@@ -142,6 +142,16 @@ func TestInstance(t *testing.T) {
 	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
 }
 
+func BenchmarkRender(b *testing.B) {
+	app := example.App()
+
+	for i := 0; i < b.N; i++ {
+		result, err := Render(app, "https://example.org/", Request{Path: "/"})
+		assert.NoError(b, err)
+		assert.NotZero(b, result.HTML())
+	}
+}
+
 func BenchmarkInstance(b *testing.B) {
 	app := example.App()
 
