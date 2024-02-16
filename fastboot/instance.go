@@ -22,6 +22,12 @@ import (
 //go:embed headers.js
 var headersClass string
 
+//go:embed setup.js
+var setupScript string
+
+//go:embed render.js
+var renderScript string
+
 type manifest struct {
 	Fastboot struct {
 		Manifest struct {
@@ -193,49 +199,10 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 	// open origin (gets intercepted)
 	actions = append(actions, chromedp.Navigate(origin))
 
-	// prepare environment
-	actions = append(actions, chromedp.Evaluate(`
-		const config = {
-			'`+app.Name()+`': `+string(config)+`
-		};
-
-		window.FastBoot = {
-			config(name) {
-				return config[name];
-			},
-			require(name) {
-				if (name === 'crypto')  {
-					return window.crypto;
-				}
-				if (name === 'node-fetch') {
-					return {
-						'default': window.fetch,
-						FormData: window.FormData,
-						Headers: window.Headers,
-						Request: window.Request,
-						Response: window.Response,
-						FetchError: window.FetchError,
-						AbortError: window.AbortError,
-						isRedirect: window.isRedirect,
-						Blob: window.Blob,
-						File: window.File,
-						fileFromSync: window.fileFromSync,
-						fileFrom: window.fileFrom,
-						blobFromSync: window.blobFromSync,
-						blobFrom: window.blobFrom,
-					};
-				}
-				if (name === 'abortcontroller-polyfill/dist/cjs-ponyfill') {
-					return {
-						AbortController: window.AbortController,
-						AbortSignal: window.AbortSignal,
-						fetch: window.fetch,
-					};
-				}
-				return window.require(...arguments);
-			},
-		};
-	`, nil))
+	// setup environment
+	setup := strings.ReplaceAll(setupScript, "NAME", app.Name())
+	setup = strings.ReplaceAll(setup, "CONFIG", string(config))
+	actions = append(actions, chromedp.Evaluate(setup, nil))
 
 	// evaluate scripts
 	for _, file := range instance.man.Fastboot.Manifest.VendorFiles {
@@ -281,73 +248,10 @@ func (i *Instance) Visit(url string, r Request) (Result, error) {
 	}
 
 	// run application
-	actions = append(actions, chromedp.Evaluate(`
-		(async () => {
-			try {
-				`+headersClass+`
-	
-				if (window.$running) {
-					throw new Error('instance running');
-				}
-	
-				if (window.$instance) {
-					await $instance.destroy();
-				}
-	
-				window.$running = true;
-		
-				let removeAttributes = (node) => {
-					while(node.attributes.length > 0) {
-						node.removeAttribute(node.attributes[0].name);
-					}
-				}
-		
-				document.head.innerHTML = '';
-				document.body.innerHTML = '';
-				removeAttributes(document.head);
-				removeAttributes(document.body);
-				removeAttributes(document.documentElement);
-		
-				window.$instance = await $app.buildInstance();
-		
-				const request = `+string(data)+`;
-				request.headers = new FastBootHeaders(request.headers);
-				request.host = () => request.headers.get('host');
-		
-				const info = {
-					request: request,
-					response: {
-						headers: new FastBootHeaders({}),
-						statusCode: 200,
-					},
-					metadata: {},
-					deferredPromise: Promise.resolve(),
-					deferRendering(promise) {
-						this.deferredPromise = promise;
-					},
-				};
-		
-				$instance.register('info:-fastboot', info, { instantiate: false });
-		
-				const options = {
-					document: window.document,
-					isBrowser: true,
-					isInteractive: false,
-					rootElement: window.document.body,
-				};
-		
-				await $instance.boot(options);
-				await $instance.visit('`+url+`', options);
-				await info.deferredPromise;
-		
-				return info;
-			} catch (err) {
-				throw err;
-			} finally {
-				window.$running = false;
-			}
-		})()
-	`, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
+	render := strings.ReplaceAll(renderScript, "HEADERS_CLASS", headersClass)
+	render = strings.ReplaceAll(render, "REQUEST", string(data))
+	render = strings.ReplaceAll(render, "URL", url)
+	actions = append(actions, chromedp.Evaluate(render, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
 		params.AwaitPromise = true
 		return params
 	}))
