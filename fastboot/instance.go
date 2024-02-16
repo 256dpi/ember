@@ -19,14 +19,8 @@ import (
 	"github.com/256dpi/ember"
 )
 
-//go:embed headers.js
-var headersClass string
-
-//go:embed setup.js
-var setupScript string
-
-//go:embed render.js
-var renderScript string
+//go:embed script.js
+var script string
 
 type manifest struct {
 	Fastboot struct {
@@ -200,9 +194,8 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 	actions = append(actions, chromedp.Navigate(origin))
 
 	// setup environment
-	setup := strings.ReplaceAll(setupScript, "NAME", app.Name())
-	setup = strings.ReplaceAll(setup, "CONFIG", string(config))
-	actions = append(actions, chromedp.Evaluate(setup, nil))
+	actions = append(actions, chromedp.Evaluate(script, nil))
+	actions = append(actions, chromedp.Evaluate(fmt.Sprintf(`$setup("%s", %s)`, app.Name(), string(config)), nil, awaitPromise))
 
 	// evaluate scripts
 	for _, file := range instance.man.Fastboot.Manifest.VendorFiles {
@@ -212,18 +205,10 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 		actions = append(actions, chromedp.Evaluate(string(instance.app.File(file)), nil))
 	}
 
-	// run application
-	actions = append(actions, chromedp.Evaluate(`
-		(async () => {
-			window.$app = require('~fastboot/app-factory').default()
-			await $app.boot();
-		})()
-	`, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
-		params.AwaitPromise = true
-		return params
-	}))
-
 	// boot application
+	actions = append(actions, chromedp.Evaluate("$boot()", nil, awaitPromise))
+
+	// run actions
 	err = chromedp.Run(instance.ctx, actions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to boot application: %w", err)
@@ -247,26 +232,14 @@ func (i *Instance) Visit(url string, r Request) (Result, error) {
 		return Result{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// run application
-	render := strings.ReplaceAll(renderScript, "HEADERS_CLASS", headersClass)
-	render = strings.ReplaceAll(render, "REQUEST", string(data))
-	render = strings.ReplaceAll(render, "URL", url)
-	actions = append(actions, chromedp.Evaluate(render, nil, func(params *runtime.EvaluateParams) *runtime.EvaluateParams {
-		params.AwaitPromise = true
-		return params
-	}))
+	// render application
+	actions = append(actions, chromedp.Evaluate(fmt.Sprintf(`$render("%s", %s)`, url, string(data)), nil, awaitPromise))
 
 	// capture HTML
 	var result Result
-	actions = append(actions, chromedp.Evaluate(`({
-		headContent: document.head.innerHTML,
-		bodyContent: document.body.innerHTML,
-		htmlAttributes: Object.fromEntries(Array.from(document.documentElement.attributes).map(a => [a.name, a.value])),
-		headAttributes: Object.fromEntries(Array.from(document.head.attributes).map(a => [a.name, a.value])),
-		bodyAttributes: Object.fromEntries(Array.from(document.body.attributes).map(a => [a.name, a.value])),
-	})`, &result))
+	actions = append(actions, chromedp.Evaluate(`$capture()`, &result))
 
-	// run application
+	// run actions
 	err = chromedp.Run(i.ctx, actions...)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
@@ -336,4 +309,9 @@ func attributesString(attrs map[string]string) string {
 		result += fmt.Sprintf(` %s="%s"`, name, value)
 	}
 	return result
+}
+
+func awaitPromise(params *runtime.EvaluateParams) *runtime.EvaluateParams {
+	params.AwaitPromise = true
+	return params
 }
