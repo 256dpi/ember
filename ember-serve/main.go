@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/kr/pretty"
 
@@ -15,6 +16,7 @@ import (
 
 var name = flag.String("name", "example", "The Ember.js application name.")
 var render = flag.Bool("fastboot", false, "Whether to render the application using FastBoot.")
+var timeout = flag.Duration("timeout", 5*time.Second, "The timeout for rendering pages.")
 var cache = flag.Duration("cache", 0, "The duration for which to cache rendered pages.")
 var isolated = flag.Bool("isolated", false, "Whether to boot the application per request.")
 var origin = flag.String("origin", "http://localhost:8000", "The origin of the application.")
@@ -50,6 +52,7 @@ func main() {
 		handler, err = fastboot.Handle(fastboot.Options{
 			App:      app,
 			Origin:   *origin,
+			Timeout:  *timeout,
 			Cache:    *cache,
 			Isolated: *isolated,
 			Headed:   *headed,
