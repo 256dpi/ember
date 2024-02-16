@@ -40,7 +40,7 @@ func Handle(options Options) (*Handler, error) {
 
 	// prepare cache
 	var cache *gocache.Cache
-	if options.Cache == 0 {
+	if options.Cache > 0 {
 		cache = gocache.New(options.Cache, options.Cache/4)
 	}
 
