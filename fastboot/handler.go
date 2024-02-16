@@ -15,6 +15,7 @@ import (
 type Options struct {
 	App       *ember.App
 	Origin    string
+	Timeout   time.Duration // 5s
 	Cache     time.Duration
 	Isolated  bool
 	Headed    bool
@@ -32,6 +33,11 @@ type Handler struct {
 
 // Handle will create a new handler.
 func Handle(options Options) (*Handler, error) {
+	// ensure timeout
+	if options.Timeout == 0 {
+		options.Timeout = 5 * time.Second
+	}
+
 	// prepare cache
 	var cache *gocache.Cache
 	if options.Cache == 0 {
@@ -129,7 +135,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// visit URL
-	result, err := instance.Visit(r.URL.String(), request)
+	result, err := instance.Visit(r.URL.String(), request, h.options.Timeout)
 	if err != nil {
 		if h.options.OnError != nil {
 			h.options.OnError(err)

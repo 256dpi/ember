@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/log"
@@ -89,6 +90,7 @@ func (r *Result) HTML() string {
 // Instance represents a running Fastboot instance.
 type Instance struct {
 	app    *ember.App
+	origin string
 	man    manifest
 	ctx    context.Context
 	cancel func()
@@ -99,7 +101,7 @@ type Instance struct {
 // Boot will boot the provided Fastboot-capable app in a headless browser and
 // return a running instance.
 func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
-	// trim trailing slashes
+	// trim origin
 	origin = strings.TrimRight(origin, "/")
 
 	// get package.json file
@@ -132,31 +134,19 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 
 	// prepare instance
 	instance := &Instance{
-		app: app,
-		man: manifest,
-		ctx: ctx,
+		app:    app,
+		origin: origin,
+		man:    manifest,
+		ctx:    ctx,
 		cancel: func() {
 			cancel2()
 			cancel1()
 		},
 	}
 
-	// clone app
-	app = app.Clone()
-
-	// disable autoboot
-	settings := app.Get("APP").(map[string]interface{})
-	settings["autoboot"] = false
-	app.Set("APP", settings)
-
-	// marshal config
-	config, err := json.Marshal(app.Config())
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	// collect errors
+	// handle events
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		// intercept main request
 		if ev, ok := ev.(*fetch.EventRequestPaused); ok {
 			go func() {
 				if strings.TrimRight(ev.Request.URL, "/") == origin {
@@ -177,12 +167,39 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 				}
 			}()
 		}
+
+		// handle errors
 		if ev, ok := ev.(*log.EventEntryAdded); ok {
 			if ev.Entry.Level == log.LevelError {
 				instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", ev.Entry.Text, ev.Entry.URL))
 			}
 		}
 	})
+
+	// boot instance
+	err = instance.boot()
+	if err != nil {
+		instance.Close()
+		return nil, err
+	}
+
+	return instance, nil
+}
+
+func (i *Instance) boot() error {
+	// clone app
+	app := i.app.Clone()
+
+	// disable autoboot
+	settings := app.Get("APP").(map[string]interface{})
+	settings["autoboot"] = false
+	app.Set("APP", settings)
+
+	// marshal config
+	config, err := json.Marshal(app.Config())
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
 
 	// prepare actions
 	var actions []chromedp.Action
@@ -191,34 +208,34 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 	actions = append(actions, fetch.Enable())
 
 	// open origin (gets intercepted)
-	actions = append(actions, chromedp.Navigate(origin))
+	actions = append(actions, chromedp.Navigate(i.origin))
 
 	// setup environment
 	actions = append(actions, chromedp.Evaluate(script, nil))
-	actions = append(actions, chromedp.Evaluate(fmt.Sprintf(`$setup("%s", %s)`, app.Name(), string(config)), nil, awaitPromise))
+	actions = append(actions, chromedp.Evaluate(fmt.Sprintf(`$setup("%s", %s)`, i.app.Name(), string(config)), nil, awaitPromise))
 
 	// evaluate scripts
-	for _, file := range instance.man.Fastboot.Manifest.VendorFiles {
-		actions = append(actions, chromedp.Evaluate(string(instance.app.File(file)), nil))
+	for _, file := range i.man.Fastboot.Manifest.VendorFiles {
+		actions = append(actions, chromedp.Evaluate(string(i.app.File(file)), nil))
 	}
-	for _, file := range instance.man.Fastboot.Manifest.AppFiles {
-		actions = append(actions, chromedp.Evaluate(string(instance.app.File(file)), nil))
+	for _, file := range i.man.Fastboot.Manifest.AppFiles {
+		actions = append(actions, chromedp.Evaluate(string(i.app.File(file)), nil))
 	}
 
 	// boot application
 	actions = append(actions, chromedp.Evaluate("$boot()", nil, awaitPromise))
 
 	// run actions
-	err = chromedp.Run(instance.ctx, actions...)
+	err = chromedp.Run(i.ctx, actions...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to boot application: %w", err)
+		return fmt.Errorf("failed to boot application: %w", err)
 	}
 
-	return instance, nil
+	return nil
 }
 
 // Visit will visit the provided URL and return the result.
-func (i *Instance) Visit(url string, r Request) (Result, error) {
+func (i *Instance) Visit(url string, r Request, timeout time.Duration) (Result, error) {
 	// acquire mutex
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
@@ -239,9 +256,18 @@ func (i *Instance) Visit(url string, r Request) (Result, error) {
 	var result Result
 	actions = append(actions, chromedp.Evaluate(`$capture()`, &result))
 
+	// ensure timeout
+	ctx, cancel := context.WithTimeout(i.ctx, timeout)
+	defer cancel()
+
 	// run actions
-	err = chromedp.Run(i.ctx, actions...)
+	err = chromedp.Run(ctx, actions...)
 	if err != nil {
+		// reboot instance on timeout
+		if errors.Is(err, context.DeadlineExceeded) {
+			_ = i.boot()
+		}
+
 		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
 	}
 
@@ -271,7 +297,7 @@ func (i *Instance) Close() {
 
 // Render will run the provided app in a headless browser and return the HTML
 // output for the specified URL.
-func Render(app *ember.App, location string, r Request) (Result, error) {
+func Render(app *ember.App, location string, r Request, timeout time.Duration) (Result, error) {
 	// parse URL
 	urlData, err := url.Parse(location)
 	if err != nil {
@@ -295,7 +321,7 @@ func Render(app *ember.App, location string, r Request) (Result, error) {
 	defer instance.Close()
 
 	// visit URL
-	result, err := instance.Visit(visitURL, r)
+	result, err := instance.Visit(visitURL, r, timeout)
 	if err != nil {
 		return Result{}, err
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -13,17 +14,17 @@ import (
 func TestRender(t *testing.T) {
 	app := example.App()
 
-	result, err := Render(app, "https://example.org/", Request{Path: "/"})
+	result, err := Render(app, "https://example.org/", Request{Path: "/"}, time.Second)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Is FastBoot: true</p>")
 
-	result, err = Render(app, "https://example.org/delay?timeout=500", Request{Path: "/delay"})
+	result, err = Render(app, "https://example.org/delay?timeout=500", Request{Path: "/delay"}, time.Second)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 
-	result, err = Render(app, "https://example.org/github", Request{Path: "/github"})
+	result, err = Render(app, "https://example.org/github", Request{Path: "/github"}, time.Second)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
@@ -36,7 +37,7 @@ func TestRenderResult(t *testing.T) {
 		Path: "/",
 		QueryParams: map[string]string{
 			"attributes": "1",
-		}})
+		}}, time.Second)
 	assert.NoError(t, err)
 	assert.Equal(t, Result{
 		HeadContent: "<title>Example</title>",
@@ -52,7 +53,7 @@ func TestRenderResult(t *testing.T) {
 		},
 	}, result)
 
-	result, err = Render(app, "https://example.org/", Request{Path: "/"})
+	result, err = Render(app, "https://example.org/", Request{Path: "/"}, time.Second)
 	assert.NoError(t, err)
 	assert.Equal(t, Result{
 		HeadContent:    "<title>Example</title>",
@@ -81,7 +82,7 @@ func TestRenderDebug(t *testing.T) {
 			"bar": "baz",
 		},
 		Body: "quz",
-	})
+	}, time.Second)
 	assert.NoError(t, err)
 
 	_, raw, _ := strings.Cut(result.BodyContent, "</h1>")
@@ -126,27 +127,44 @@ func TestInstance(t *testing.T) {
 	assert.NoError(t, err)
 	defer instance.Close()
 
-	result, err := instance.Visit("/", Request{Path: "/"})
+	result, err := instance.Visit("/", Request{Path: "/"}, time.Second)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Is FastBoot: true</p>")
 
-	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"})
+	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"}, time.Second)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 
-	result, err = instance.Visit("/github", Request{Path: "/github"})
+	result, err = instance.Visit("/github", Request{Path: "/github"}, time.Second)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
+}
+
+func TestInstanceTimeout(t *testing.T) {
+	app := example.App()
+
+	instance, err := Boot(app, "https://example.org", false)
+	assert.NoError(t, err)
+	defer instance.Close()
+
+	result, err := instance.Visit("/delay?timeout=5000", Request{Path: "/delay"}, time.Second)
+	assert.Error(t, err)
+	assert.Empty(t, result)
+
+	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"}, time.Second)
+	assert.NoError(t, err)
+	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
+	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 }
 
 func BenchmarkRender(b *testing.B) {
 	app := example.App()
 
 	for i := 0; i < b.N; i++ {
-		result, err := Render(app, "https://example.org/", Request{Path: "/"})
+		result, err := Render(app, "https://example.org/", Request{Path: "/"}, time.Second)
 		assert.NoError(b, err)
 		assert.NotZero(b, result.HTML())
 	}
@@ -160,7 +178,7 @@ func BenchmarkInstance(b *testing.B) {
 	defer instance.Close()
 
 	for i := 0; i < b.N; i++ {
-		html, err := instance.Visit("/", Request{Path: "/"})
+		html, err := instance.Visit("/", Request{Path: "/"}, time.Second)
 		assert.NoError(b, err)
 		assert.NotZero(b, html)
 	}
