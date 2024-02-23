@@ -27,9 +27,12 @@ const indexHTML = `<!DOCTYPE html>
 
 const scriptJS = `alert("Hello World!");`
 
+const appCSS = `.image { background: url(/images/image.png); }`
+
 var files = map[string]string{
 	"index.html": indexHTML,
 	"script.js":  scriptJS,
+	"app.css":    appCSS,
 }
 
 func Example() {

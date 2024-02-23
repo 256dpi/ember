@@ -172,37 +172,61 @@ func (a *App) AppendBody(tag string) {
 
 // Prefix will change the root URL and prefix all assets paths with the
 // specified prefix. The app must be served with http.StripPrefix() to work
-// correctly.
-func (a *App) Prefix(prefix string) {
-	// ensure prefix
+// correctly. If fixCSS is set to true, the app will also prefix all CSS
+// url() paths. If dirs is empty or nil, the default "assets" directory will
+// be used.
+func (a *App) Prefix(prefix string, dirs []string, fixCSS bool) {
+	// ensure default dirs
+	if dirs == nil {
+		dirs = []string{"assets"}
+	}
+
+	// cleanup prefix and dirs
 	prefix = "/" + strings.Trim(prefix, "/")
+	for i, dir := range dirs {
+		dirs[i] = strings.Trim(dir, "/")
+	}
 
 	// set root url
 	a.Set("rootURL", prefix+"/")
 
 	// prefix index paths
-	a.index[0] = bytes.Replace(a.index[0], []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
-	a.index[2] = bytes.Replace(a.index[2], []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
-	a.index[2] = bytes.Replace(a.index[2], []byte(`href="/assets/`), []byte(`href="`+prefix+`/assets/`), -1)
+	for _, dir := range dirs {
+		a.index[0] = bytes.Replace(a.index[0], []byte(`src="/`+dir+`/`), []byte(`src="`+prefix+`/`+dir+`/`), -1)
+		a.index[2] = bytes.Replace(a.index[2], []byte(`src="/`+dir+`/`), []byte(`src="`+prefix+`/`+dir+`/`), -1)
+		a.index[2] = bytes.Replace(a.index[2], []byte(`href="/`+dir+`/`), []byte(`href="`+prefix+`/`+dir+`/`), -1)
+
+	}
 
 	// recompile
 	a.recompile()
 
-	// prefix files
+	// prefix other files
 	for name, file := range a.files {
 		// skip index
 		if name == indexHTMLFile {
 			continue
 		}
 
-		// skip other files
-		if !strings.HasSuffix(name, ".html") {
-			continue
+		// prefix .html files
+		if strings.HasSuffix(name, ".html") {
+			for _, dir := range dirs {
+				file = bytes.Replace(file, []byte(`src="/`+dir+`/`), []byte(`src="`+prefix+`/`+dir+`/`), -1)
+				file = bytes.Replace(file, []byte(`href="/`+dir+`/`), []byte(`href="`+prefix+`/`+dir+`/`), -1)
+			}
 		}
 
-		// prefix file paths
-		a.files[name] = bytes.Replace(file, []byte(`src="/assets/`), []byte(`src="`+prefix+`/assets/`), -1)
-		a.files[name] = bytes.Replace(file, []byte(`href="/assets/`), []byte(`href="`+prefix+`/assets/`), -1)
+		// prefix .css files
+		if fixCSS && strings.HasSuffix(name, ".css") {
+			for _, dir := range dirs {
+				file = bytes.Replace(file, []byte(`url(/`+dir+`/`), []byte(`url(`+prefix+`/`+dir+`/`), -1)
+				file = bytes.Replace(file, []byte(`url("/`+dir+`/`), []byte(`url("`+prefix+`/`+dir+`/`), -1)
+			}
+			fmt.Println(string(file))
+		}
+
+		// replace file
+		a.files[name] = file
 	}
 }
 

@@ -10,6 +10,7 @@ func TestApp(t *testing.T) {
 	app, err := Create("app", map[string]string{
 		"index.html": indexHTML,
 		"script.js":  scriptJS,
+		"app.css":    appCSS,
 	})
 	assert.NoError(t, err)
 
@@ -39,12 +40,14 @@ func TestApp(t *testing.T) {
 	assert.False(t, app.IsAsset("/index.html"))
 	assert.True(t, app.IsAsset("/foo.html"))
 	assert.True(t, app.IsAsset("/script.js"))
+	assert.True(t, app.IsAsset("/app.css"))
 
 	assert.True(t, app.IsPage(""))
 	assert.True(t, app.IsPage("foo"))
 	assert.True(t, app.IsPage("/index.html"))
 	assert.False(t, app.IsPage("/foo.html"))
 	assert.False(t, app.IsPage("/script.js"))
+	assert.False(t, app.IsPage("/app.css"))
 
 	index := app.files["index.html"]
 	assert.Equal(t, unIndent(`<!DOCTYPE html>
@@ -72,7 +75,7 @@ func TestApp(t *testing.T) {
 	foo := app.files["foo.html"]
 	assert.Equal(t, "Hello World!", string(foo))
 
-	app.Prefix("foo")
+	app.Prefix("foo", []string{"assets", "images"}, true)
 	index = app.files["index.html"]
 	assert.Equal(t, unIndent(`<!DOCTYPE html>
 		<html>
@@ -95,6 +98,8 @@ func TestApp(t *testing.T) {
 			</body>
 		</html>
 	`), unIndent(string(index)))
+	css := app.files["app.css"]
+	assert.Equal(t, unIndent(".image { background: url(/foo/images/image.png); }"), unIndent(string(css)))
 }
 
 func BenchmarkAppCloneSet(b *testing.B) {
