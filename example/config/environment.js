@@ -20,8 +20,8 @@ module.exports = function (environment) {
     },
 
     fastboot: {
-      hostWhitelist: ['example.com', /^localhost:\d+$/]
-    }
+      hostWhitelist: ['example.com', /^localhost:\d+$/],
+    },
   };
 
   if (environment === 'development') {

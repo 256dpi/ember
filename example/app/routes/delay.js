@@ -2,7 +2,7 @@ import Route from '@ember/routing/route';
 
 export default class extends Route {
   queryParams = {
-    timeout: {}
+    timeout: {},
   };
 
   model(params) {
