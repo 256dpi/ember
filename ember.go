@@ -222,7 +222,6 @@ func (a *App) Prefix(prefix string, dirs []string, fixCSS bool) {
 				file = bytes.Replace(file, []byte(`url(/`+dir+`/`), []byte(`url(`+prefix+`/`+dir+`/`), -1)
 				file = bytes.Replace(file, []byte(`url("/`+dir+`/`), []byte(`url("`+prefix+`/`+dir+`/`), -1)
 			}
-			fmt.Println(string(file))
 		}
 
 		// replace file
