@@ -11,20 +11,22 @@ import (
 	"github.com/256dpi/ember/example"
 )
 
+const timeout = 5 * time.Second
+
 func TestRender(t *testing.T) {
 	app := example.App()
 
-	result, err := Render(app, "https://example.org/", Request{Path: "/"}, time.Second)
+	result, err := Render(app, "https://example.org/", Request{Path: "/"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Is FastBoot: true</p>")
 
-	result, err = Render(app, "https://example.org/delay?timeout=500", Request{Path: "/delay"}, time.Second)
+	result, err = Render(app, "https://example.org/delay?timeout=500", Request{Path: "/delay"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 
-	result, err = Render(app, "https://example.org/github", Request{Path: "/github"}, time.Second)
+	result, err = Render(app, "https://example.org/github", Request{Path: "/github"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
@@ -53,7 +55,7 @@ func TestRenderResult(t *testing.T) {
 		},
 	}, result)
 
-	result, err = Render(app, "https://example.org/", Request{Path: "/"}, time.Second)
+	result, err = Render(app, "https://example.org/", Request{Path: "/"}, timeout)
 	assert.NoError(t, err)
 	assert.Equal(t, Result{
 		HeadContent:    "<title>Example</title>",
@@ -82,7 +84,7 @@ func TestRenderDebug(t *testing.T) {
 			"bar": "baz",
 		},
 		Body: "quz",
-	}, time.Second)
+	}, timeout)
 	assert.NoError(t, err)
 
 	_, raw, _ := strings.Cut(result.BodyContent, "</h1>")
@@ -127,17 +129,17 @@ func TestInstance(t *testing.T) {
 	assert.NoError(t, err)
 	defer instance.Close()
 
-	result, err := instance.Visit("/", Request{Path: "/"}, time.Second)
+	result, err := instance.Visit("/", Request{Path: "/"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Is FastBoot: true</p>")
 
-	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"}, time.Second)
+	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 
-	result, err = instance.Visit("/github", Request{Path: "/github"}, time.Second)
+	result, err = instance.Visit("/github", Request{Path: "/github"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
@@ -150,11 +152,11 @@ func TestInstanceTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	defer instance.Close()
 
-	result, err := instance.Visit("/delay?timeout=5000", Request{Path: "/delay"}, time.Second)
+	result, err := instance.Visit("/delay?timeout=5000", Request{Path: "/delay"}, timeout)
 	assert.Error(t, err)
 	assert.Empty(t, result)
 
-	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"}, time.Second)
+	result, err = instance.Visit("/delay?timeout=500", Request{Path: "/delay"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
@@ -164,7 +166,7 @@ func BenchmarkRender(b *testing.B) {
 	app := example.App()
 
 	for i := 0; i < b.N; i++ {
-		result, err := Render(app, "https://example.org/", Request{Path: "/"}, time.Second)
+		result, err := Render(app, "https://example.org/", Request{Path: "/"}, timeout)
 		assert.NoError(b, err)
 		assert.NotZero(b, result.HTML())
 	}
@@ -178,7 +180,7 @@ func BenchmarkInstance(b *testing.B) {
 	defer instance.Close()
 
 	for i := 0; i < b.N; i++ {
-		html, err := instance.Visit("/", Request{Path: "/"}, time.Second)
+		html, err := instance.Visit("/", Request{Path: "/"}, timeout)
 		assert.NoError(b, err)
 		assert.NotZero(b, html)
 	}
