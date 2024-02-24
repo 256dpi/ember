@@ -1,11 +1,15 @@
 package ember
 
 import (
+	"embed"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+//go:embed example/dist
+var example embed.FS
 
 func TestFiles(t *testing.T) {
 	dir := t.TempDir()
@@ -21,4 +25,11 @@ func TestFiles(t *testing.T) {
 		"index.html":       indexHTML,
 		"assets/script.js": scriptJS,
 	}, files)
+}
+
+func TestFilesExample(t *testing.T) {
+	files := MustFiles(example, "example/dist")
+	index, ok := files["index.html"]
+	assert.True(t, ok)
+	assert.NotEmpty(t, index)
 }
