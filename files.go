@@ -2,7 +2,6 @@ package ember
 
 import (
 	"io/fs"
-	"path/filepath"
 	"strings"
 )
 
@@ -19,6 +18,9 @@ func MustFiles(f fs.FS, dir string) map[string]string {
 
 // Files will return a file map from the provided file system directory.
 func Files(f fs.FS, dir string) (map[string]string, error) {
+	// trim dir
+	dir = strings.Trim(dir, "/")
+
 	// collect files
 	files := make(map[string]string)
 	err := fs.WalkDir(f, dir, func(path string, d fs.DirEntry, err error) error {
@@ -39,7 +41,7 @@ func Files(f fs.FS, dir string) (map[string]string, error) {
 		}
 
 		// add file
-		files[strings.TrimPrefix(path, dir+string(filepath.Separator))] = string(buf)
+		files[strings.TrimPrefix(path, dir+"/")] = string(buf)
 
 		return nil
 	})
