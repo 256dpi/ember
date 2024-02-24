@@ -1,7 +1,6 @@
 package ember
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -12,9 +11,9 @@ func TestFiles(t *testing.T) {
 	dir := t.TempDir()
 	err := os.MkdirAll(dir+"/app/assets", 0755)
 	assert.NoError(t, err)
-	err = ioutil.WriteFile(dir+"/app/index.html", []byte(indexHTML), 0644)
+	err = os.WriteFile(dir+"/app/index.html", []byte(indexHTML), 0644)
 	assert.NoError(t, err)
-	err = ioutil.WriteFile(dir+"/app/assets/script.js", []byte(scriptJS), 0644)
+	err = os.WriteFile(dir+"/app/assets/script.js", []byte(scriptJS), 0644)
 	assert.NoError(t, err)
 
 	files := MustFiles(os.DirFS(dir), "app")
