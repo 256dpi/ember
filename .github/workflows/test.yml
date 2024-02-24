@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: example/yarn.lock
       - name: Yarn Install
         working-directory: example
-        run: yarn install
+        run: yarn install --network-timeout 300000
       - name: Build Example
         working-directory: example
         run: yarn build
