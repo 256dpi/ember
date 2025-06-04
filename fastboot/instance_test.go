@@ -26,10 +26,10 @@ func TestRender(t *testing.T) {
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 
-	result, err = Render(app, "https://example.org/github", Request{Path: "/github"}, timeout)
+	result, err = Render(app, "https://example.org/fetch", Request{Path: "/fetch"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
-	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
+	assert.Contains(t, result.HTML(), "<p>URL: https://httpbin.org/anything</p>")
 }
 
 func TestRenderResult(t *testing.T) {
@@ -139,10 +139,10 @@ func TestInstance(t *testing.T) {
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
 	assert.Contains(t, result.HTML(), "<p>Message: Hello world!</p>")
 
-	result, err = instance.Visit("/github", Request{Path: "/github"}, timeout)
+	result, err = instance.Visit("/fetch", Request{Path: "/fetch"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
-	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
+	assert.Contains(t, result.HTML(), "<p>URL: https://httpbin.org/anything</p>")
 }
 
 func TestInstanceTimeout(t *testing.T) {

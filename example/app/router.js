@@ -8,6 +8,6 @@ export default class Router extends EmberRouter {
 
 Router.map(function () {
   this.route('delay');
-  this.route('github');
+  this.route('fetch');
   this.route('debug');
 });

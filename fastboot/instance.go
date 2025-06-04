@@ -271,11 +271,20 @@ func (i *Instance) Visit(url string, r Request, timeout time.Duration) (Result, 
 		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
 	}
 
+	// collect errors
+	var errs []error
+	for _, err := range i.errs {
+		if !strings.Contains(err.Error(), "favicon.ico") {
+			errs = append(errs, err)
+		}
+	}
+
+	// clear errors
+	i.errs = nil
+
 	// handle errors
-	if len(i.errs) > 0 {
-		err = errors.Join(i.errs...)
-		i.errs = nil
-		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
+	if len(errs) > 0 {
+		return Result{}, fmt.Errorf("failed to visit URL: %w", errors.Join(errs...))
 	}
 
 	return result, nil
