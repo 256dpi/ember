@@ -23,6 +23,8 @@ import (
 //go:embed script.js
 var script string
 
+var noSandbox = false
+
 type manifest struct {
 	Fastboot struct {
 		Manifest struct {
@@ -121,6 +123,9 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 	options := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	if headed {
 		options = append(options, chromedp.Flag("headless", false))
+	}
+	if noSandbox {
+		options = append(options, chromedp.NoSandbox)
 	}
 
 	// disable image loading
