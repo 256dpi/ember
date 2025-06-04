@@ -29,7 +29,7 @@ func TestRender(t *testing.T) {
 	result, err = Render(app, "https://example.org/fetch", Request{Path: "/fetch"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
-	assert.Contains(t, result.HTML(), "<p>URL: https://httpbin.org/anything</p>")
+	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
 }
 
 func TestRenderResult(t *testing.T) {
@@ -142,7 +142,7 @@ func TestInstance(t *testing.T) {
 	result, err = instance.Visit("/fetch", Request{Path: "/fetch"}, timeout)
 	assert.NoError(t, err)
 	assert.Contains(t, result.HTML(), "<h1>Example</h1>")
-	assert.Contains(t, result.HTML(), "<p>URL: https://httpbin.org/anything</p>")
+	assert.Contains(t, result.HTML(), "<p>Name: Joël Gähwiler</p>")
 }
 
 func TestInstanceTimeout(t *testing.T) {
