@@ -16,7 +16,7 @@ export default class extends Controller {
         metadata: this.fastboot.metadata,
       },
       null,
-      2
+      2,
     );
   }
 }

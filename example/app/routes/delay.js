@@ -7,9 +7,12 @@ export default class extends Route {
 
   model(params) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ message: 'Hello world!' });
-      }, parseInt(params.timeout) || 1000);
+      setTimeout(
+        () => {
+          resolve({ message: 'Hello world!' });
+        },
+        parseInt(params.timeout) || 1000,
+      );
     });
   }
 }
