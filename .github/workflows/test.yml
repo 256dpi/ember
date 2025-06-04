@@ -13,14 +13,16 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: "1.20.x"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
           cache: 'pnpm'
           cache-dependency-path: example/pnpm-lock.yaml
-      - name: Install PNPM
-        run: npm install -g pnpm
       - name: PNPM Install
         working-directory: example
         run: pnpm install
