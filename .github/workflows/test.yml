@@ -30,6 +30,7 @@ jobs:
         working-directory: example
         run: pnpm build
       - name: Test
+        shell: bash
         run: |
           go test .
           cd fastboot; go test -test.noSandbox .
