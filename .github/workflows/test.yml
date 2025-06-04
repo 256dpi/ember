@@ -17,13 +17,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
-          cache: 'yarn'
-          cache-dependency-path: example/yarn.lock
-      - name: Yarn Install
+          cache: 'pnpm'
+          cache-dependency-path: example/pnpm-lock.yaml
+      - name: PNPM Install
         working-directory: example
-        run: yarn install --network-timeout 300000
+        run: pnpm install
       - name: Build Example
         working-directory: example
-        run: yarn build
+        run: pnpm build
       - name: Test
         run: go test ./...
