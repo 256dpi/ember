@@ -108,11 +108,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Body:        "",
 	}
 
-	// clear URL prefix
-	r.URL.Scheme = ""
-	r.URL.Opaque = ""
-	r.URL.Host = ""
-	r.URL.User = nil
+	// build visit URL from a copy so the original request is not mutated
+	visitURL := *r.URL
+	visitURL.Scheme = ""
+	visitURL.Opaque = ""
+	visitURL.Host = ""
+	visitURL.User = nil
 
 	// prepare index
 	index := h.options.App.File("index.html")
@@ -138,7 +139,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// visit URL
-	result, err := instance.Visit(r.URL.String(), request, h.options.Timeout)
+	result, err := instance.Visit(visitURL.String(), request, h.options.Timeout)
 	if err != nil {
 		if h.options.OnError != nil {
 			h.options.OnError(err)
