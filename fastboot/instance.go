@@ -98,7 +98,22 @@ type Instance struct {
 	ctx    context.Context
 	cancel func()
 	errs   []error
+	errsMu sync.Mutex
 	mutex  sync.Mutex
+}
+
+func (i *Instance) addErr(err error) {
+	i.errsMu.Lock()
+	defer i.errsMu.Unlock()
+	i.errs = append(i.errs, err)
+}
+
+func (i *Instance) takeErrs() []error {
+	i.errsMu.Lock()
+	defer i.errsMu.Unlock()
+	errs := i.errs
+	i.errs = nil
+	return errs
 }
 
 // Boot will boot the provided Fastboot-capable app in a headless browser and
@@ -161,14 +176,14 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 							WithBody(base64.StdEncoding.EncodeToString([]byte("<html><head></head><body></body></html>"))),
 					)
 					if err != nil {
-						instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", err.Error(), ev.Request.URL))
+						instance.addErr(fmt.Errorf("%s (%s)", err.Error(), ev.Request.URL))
 					}
 				} else {
 					err := chromedp.Run(ctx,
 						fetch.ContinueRequest(ev.RequestID),
 					)
 					if err != nil {
-						instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", err.Error(), ev.Request.URL))
+						instance.addErr(fmt.Errorf("%s (%s)", err.Error(), ev.Request.URL))
 					}
 				}
 			}()
@@ -177,7 +192,7 @@ func Boot(app *ember.App, origin string, headed bool) (*Instance, error) {
 		// handle errors
 		if ev, ok := ev.(*log.EventEntryAdded); ok {
 			if ev.Entry.Level == log.LevelError {
-				instance.errs = append(instance.errs, fmt.Errorf("%s (%s)", ev.Entry.Text, ev.Entry.URL))
+				instance.addErr(fmt.Errorf("%s (%s)", ev.Entry.Text, ev.Entry.URL))
 			}
 		}
 	})
@@ -272,21 +287,19 @@ func (i *Instance) Visit(url string, r Request, timeout time.Duration) (Result, 
 		// reboot instance on timeout
 		if errors.Is(err, context.DeadlineExceeded) {
 			_ = i.boot()
+			_ = i.takeErrs()
 		}
 
 		return Result{}, fmt.Errorf("failed to visit URL: %w", err)
 	}
 
-	// collect errors
+	// collect and clear errors
 	var errs []error
-	for _, err := range i.errs {
+	for _, err := range i.takeErrs() {
 		if !strings.Contains(err.Error(), "favicon.ico") {
 			errs = append(errs, err)
 		}
 	}
-
-	// clear errors
-	i.errs = nil
 
 	// handle errors
 	if len(errs) > 0 {
