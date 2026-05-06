@@ -83,9 +83,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// set content type
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
+	// build cache key from full request URI (path + query)
+	cacheKey := r.URL.RequestURI()
+
 	// serve cached result if possible
 	if h.cache != nil {
-		cached, ok := h.cache.Get(pth)
+		cached, ok := h.cache.Get(cacheKey)
 		if ok {
 			http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(cached.([]byte)))
 			return
@@ -167,7 +170,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// cache result if possible
 	if h.cache != nil {
-		h.cache.Set(pth, index, h.options.Cache)
+		h.cache.Set(cacheKey, index, h.options.Cache)
 	}
 }
 
