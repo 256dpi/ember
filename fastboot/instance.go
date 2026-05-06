@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/url"
 	"strings"
 	"sync"
@@ -346,7 +347,7 @@ func Render(app *ember.App, location string, r Request, timeout time.Duration) (
 func attributesString(attrs map[string]string) string {
 	var result string
 	for name, value := range attrs {
-		result += fmt.Sprintf(` %s="%s"`, name, value)
+		result += fmt.Sprintf(` %s="%s"`, name, html.EscapeString(value))
 	}
 	return result
 }
