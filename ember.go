@@ -362,10 +362,29 @@ func (a *App) getConfig() map[string]interface{} {
 
 func (a *App) copyConfig() {
 	if a.config == nil {
-		parent := a.getConfig()
-		a.config = map[string]interface{}{}
-		for key, value := range parent {
-			a.config[key] = value
+		a.config = deepCopyConfig(a.getConfig())
+	}
+}
+
+func deepCopyConfig(m map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		out[k] = deepCopyValue(v)
+	}
+	return out
+}
+
+func deepCopyValue(v interface{}) interface{} {
+	switch t := v.(type) {
+	case map[string]interface{}:
+		return deepCopyConfig(t)
+	case []interface{}:
+		out := make([]interface{}, len(t))
+		for i, x := range t {
+			out[i] = deepCopyValue(x)
 		}
+		return out
+	default:
+		return v
 	}
 }
